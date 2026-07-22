@@ -11,7 +11,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
 
-from .artifacts import append_jsonl_record_atomic, read_checkpoint_by_sample_id
+from .artifacts import read_checkpoint_by_sample_id, write_jsonl_atomic
 from .config import InferenceConfig
 from .models import (
     DatasetSample,
@@ -129,12 +129,11 @@ async def collect_samples(
             to_issue.append((index, sample))
 
     semaphore = asyncio.Semaphore(inference.max_concurrency)
-    checkpoint_lock = asyncio.Lock()
 
     async with _managed_client(client_factory) as client:
         async def worker(index: int, sample: DatasetSample) -> None:
             async with semaphore:
-                record = await _collect_one(
+                results[index] = await _collect_one(
                     client,
                     sample,
                     tool_name=tool_name,
@@ -142,18 +141,12 @@ async def collect_samples(
                     call_shape=call_shape,
                     sleep=sleep,
                 )
-                async with checkpoint_lock:
-                    append_jsonl_record_atomic(
-                        checkpoint_path,
-                        record,
-                        key_field="sample_id",
-                        overwrite=overwrite,
-                    )
-                results[index] = record
 
         await asyncio.gather(*(worker(index, sample) for index, sample in to_issue))
 
-    return [record for record in results if record is not None]
+    collected = [record for record in results if record is not None]
+    write_jsonl_atomic(checkpoint_path, collected)
+    return collected
 
 
 async def _collect_one(
