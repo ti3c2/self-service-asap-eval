@@ -11,9 +11,9 @@ initial_backoff_seconds = 0.25
 max_backoff_seconds = 5
 
 [ragas]
-max_workers = 64
-timeout_seconds = 180
+max_workers = 156
+timeout_seconds = 600
 max_retries = 3
-max_wait_seconds = 60
+max_wait_seconds = 600
 seed = 42
 raise_exceptions = false
