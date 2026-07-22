@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
+from tqdm import tqdm
 
 from .artifacts import read_checkpoint_by_sample_id, write_jsonl_atomic
 from .config import InferenceConfig
@@ -131,18 +132,20 @@ async def collect_samples(
     semaphore = asyncio.Semaphore(inference.max_concurrency)
 
     async with _managed_client(client_factory) as client:
-        async def worker(index: int, sample: DatasetSample) -> None:
-            async with semaphore:
-                results[index] = await _collect_one(
-                    client,
-                    sample,
-                    tool_name=tool_name,
-                    inference=inference,
-                    call_shape=call_shape,
-                    sleep=sleep,
-                )
+        with tqdm(total=len(to_issue), desc="Collecting", unit="sample") as pbar:
+            async def worker(index: int, sample: DatasetSample) -> None:
+                async with semaphore:
+                    results[index] = await _collect_one(
+                        client,
+                        sample,
+                        tool_name=tool_name,
+                        inference=inference,
+                        call_shape=call_shape,
+                        sleep=sleep,
+                    )
+                    pbar.update(1)
 
-        await asyncio.gather(*(worker(index, sample) for index, sample in to_issue))
+            await asyncio.gather(*(worker(index, sample) for index, sample in to_issue))
 
     collected = [record for record in results if record is not None]
     write_jsonl_atomic(checkpoint_path, collected)
