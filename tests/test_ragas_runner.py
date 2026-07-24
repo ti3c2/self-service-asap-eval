@@ -132,3 +132,30 @@ def test_duplicate_question_texts_join_scores_by_ordered_sample_index() -> None:
 
     assert result.scores_by_sample_id["sample-1"]["faithfulness"] == 0.1
     assert result.scores_by_sample_id["sample-2"]["faithfulness"] == 0.9
+
+
+def test_mode_metric_score_key_maps_to_canonical_metric_name() -> None:
+    config = EvalConfig(dataset_path=Path("dataset.csv"))
+
+    def fake_evaluate(dataset: Any, **kwargs: Any) -> Any:
+        return SimpleNamespace(
+            scores=[
+                {
+                    "faithfulness": 1.0,
+                    "nv_accuracy": 1.0,
+                    "nv_response_groundedness": 1.0,
+                    "nv_context_relevance": 1.0,
+                    "factual_correctness(mode=f1)": 0.67,
+                }
+            ]
+        )
+
+    result = run_ragas_evaluation(
+        [make_record("sample-1")],
+        config,
+        llm=object(),
+        embeddings=object(),
+        evaluate_fn=fake_evaluate,
+    )
+
+    assert result.scores_by_sample_id["sample-1"]["factual_correctness"] == 0.67

@@ -11,6 +11,7 @@ from ragas import evaluate
 from ragas.dataset_schema import EvaluationDataset, SingleTurnSample
 from ragas.embeddings.base import LangchainEmbeddingsWrapper
 from ragas.llms.base import LangchainLLMWrapper
+from ragas.metrics.base import ModeMetric
 from ragas.run_config import RunConfig
 
 from .config import EvalConfig, JudgeEnvironment, RagasConfig
@@ -101,6 +102,7 @@ def run_ragas_evaluation(
     prepared = prepare_ragas_samples(records)
     metric_instances = build_ragas_metrics()
     metric_names = [metric.name for metric in metric_instances]
+    score_keys = [_ragas_score_key(metric) for metric in metric_instances]
     if metric_names != RAGAS_METRIC_NAMES:
         raise RuntimeError(f"Unexpected RAGAS metric order: {metric_names}")
 
@@ -124,7 +126,7 @@ def run_ragas_evaluation(
         raise_exceptions=config.ragas.raise_exceptions,
         batch_size=config.ragas.batch_size,
     )
-    score_rows = _extract_ordered_score_rows(result, metric_names)
+    score_rows = _extract_ordered_score_rows(result)
     if len(score_rows) != len(prepared):
         raise ValueError(
             "RAGAS returned a different number of score rows than input samples: "
@@ -134,8 +136,8 @@ def run_ragas_evaluation(
     scores_by_sample_id: dict[str, dict[str, float | None]] = {}
     for prepared_sample, score_row in zip(prepared, score_rows, strict=True):
         scores_by_sample_id[prepared_sample.sample_id] = {
-            metric_name: _score_value(score_row.get(metric_name))
-            for metric_name in metric_names
+            metric_name: _score_value(score_row.get(score_key))
+            for metric_name, score_key in zip(metric_names, score_keys, strict=True)
         }
 
     return RagasRunResult(
@@ -145,7 +147,7 @@ def run_ragas_evaluation(
     )
 
 
-def _extract_ordered_score_rows(result: Any, metric_names: list[str]) -> list[dict[str, Any]]:
+def _extract_ordered_score_rows(result: Any) -> list[dict[str, Any]]:
     scores = getattr(result, "scores", None)
     if scores is not None:
         return [dict(row) for row in scores]
@@ -155,11 +157,14 @@ def _extract_ordered_score_rows(result: Any, metric_names: list[str]) -> list[di
         return [dict(row) for row in result["scores"]]
     if hasattr(result, "to_pandas"):
         frame = result.to_pandas()
-        return [
-            {metric_name: row.get(metric_name) for metric_name in metric_names}
-            for row in frame.to_dict(orient="records")
-        ]
+        return [dict(row) for row in frame.to_dict(orient="records")]
     raise TypeError(f"Unsupported RAGAS result type: {type(result).__name__}")
+
+
+def _ragas_score_key(metric: Any) -> str:
+    if isinstance(metric, ModeMetric):
+        return f"{metric.name}(mode={metric.mode})"
+    return str(metric.name)
 
 
 def _score_value(value: Any) -> float | None:
