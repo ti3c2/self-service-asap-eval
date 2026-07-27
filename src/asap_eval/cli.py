@@ -74,8 +74,7 @@ def command_audit(args: argparse.Namespace) -> None:
 async def command_collect(args: argparse.Namespace) -> Path:
     config = EvalConfig.from_toml(args.config)
     audit, samples = load_dataset(config.dataset_path)
-    if args.max_samples is not None:
-        samples = samples[: args.max_samples]
+    samples = _select_samples(samples, args.max_samples)
     output_dir = args.output_dir or config.output_dir
     run_dir = create_run_dir(output_dir, audit.dataset_sha256)
     preflight = await live_preflight(config)
@@ -113,6 +112,12 @@ def command_evaluate(args: argparse.Namespace) -> None:
     run_dir = Path(args.run_dir)
     evaluate_run_dir(config, run_dir)
     print(f"Wrote evaluation artifacts in {run_dir}")
+
+
+def _select_samples(samples: list[Any], max_samples: int | None) -> list[Any]:
+    if max_samples is None or max_samples <= 0:
+        return samples
+    return samples[:max_samples]
 
 
 async def command_run(args: argparse.Namespace) -> None:

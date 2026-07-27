@@ -1,38 +1,69 @@
-# RAG+ASAP evaluation suite
+# Evaluation suite для `rag_tool_asap`
 
-This project collects structured answers from the `rag_tool_asap` MCP tool and evaluates
-them with RAGAS `0.3.2` plus two deterministic retrieval-hit metrics.
+Этот репозиторий — полный набор скриптов и кода для проверки компонента
+`rag_tool_asap` из соседнего `self-service-orig`.
 
-## Dataset
+Evaluation pipeline делает три вещи:
 
-Use the component fixture as the canonical dataset:
+- запускает и подготавливает MCP-компонент `rag_tool_asap`;
+- собирает структурированные ответы инструмента `RAG_ASAP(..., return_contexts=True)`;
+- считает RAGAS `0.3.2` и deterministic retrieval-hit метрики по canonical ASAP dataset.
+
+## Связь с компонентом
+
+Компонент живёт здесь:
+
+```text
+../self-service-orig/services/components/rag_tool_asap
+```
+
+Его UI/конфигурационная спецификация описана в:
+
+```text
+../self-service-orig/packages/component_specs/src/self_service/component_specs/components/rag_tool_asap
+```
+
+`component_specs` задаёт `ComponentConf`: модели, CSV-файл, `triplet_top_k`,
+`synthetic_top_n` и `force_rebuild`. Eval suite не дублирует эту схему, а запускает
+реальный компонент с его `config.json` и проверяет MCP-контракт, который нужен для оценки.
+
+## Датасет
+
+Canonical dataset берётся из fixture компонента:
 
 ```text
 ../self-service-orig/services/components/rag_tool_asap/tests/files/asap.csv
 ```
 
-Expected audit counts:
+Ожидаемый audit:
 
-- raw rows: 10,000
-- distinct chunks: 1,867
-- query-bearing rows: 1,843
-- document-only rows: 8,157
-- distinct query IDs: 1,825
+- raw rows: `10 000`;
+- distinct chunks: `1 867`;
+- query-bearing rows: `1 843`;
+- document-only rows: `8 157`;
+- distinct query IDs: `1 825`.
 
-The benchmark denominator is the 1,843 query-bearing source rows. Duplicate and ambiguous
-`query_id` values are preserved and reported; scores are joined by stable sample ID/source row,
-not by question text.
+Главный denominator benchmark — `1 843` строки с вопросами. Дубликаты и неоднозначные
+`query_id` сохраняются; результаты связываются по стабильному `sample_id` и исходной CSV-строке,
+а не по тексту вопроса.
 
-## Configuration
+## Подготовка конфигов
 
-Copy the example files:
+В корне `self-service-asap-eval`:
 
 ```bash
 cp config.example.toml config.toml
 cp .env.example .env
 ```
 
-Judge credentials are read from the environment, not from TOML artifacts:
+`config.toml` задаёт путь к датасету, MCP URL, concurrency для вызовов компонента и настройки
+RAGAS. По умолчанию eval ждёт компонент на:
+
+```text
+http://localhost:8100/mcp/
+```
+
+Ключи judge-моделей читаются из `.env` или окружения:
 
 ```text
 JUDGE_LLM_API_KEY
@@ -43,54 +74,117 @@ JUDGE_EMBED_BASE_URL
 JUDGE_EMBED_MODEL_NAME
 ```
 
-`inference.max_concurrency` controls concurrent MCP calls. `ragas.max_workers` controls
-RAGAS judge concurrency. These target different services.
+`inference.max_concurrency` управляет параллельными MCP-вызовами к компоненту.
+`ragas.max_workers` управляет параллельностью judge-модели. Это разные сервисы, поэтому
+значения можно настраивать независимо.
 
-## Commands
+## Инициализация `rag_tool_asap`
 
-Audit the dataset:
+Перед evaluation нужно поднять реальные зависимости компонента:
+
+- Docker;
+- OpenSearch и MinIO из `self-service-orig`;
+- LLM endpoint для online-ответов;
+- preprocessing LLM endpoint для генерации synthetic QA;
+- embedding endpoint.
+
+Заполните секреты в `../self-service-orig/secrets/*.env`. Скрипт создаст отсутствующие файлы
+из `.example`, но реальные адреса и ключи для LLM/embedding нужно прописать вручную.
+
+Для локального запуска моделей можно использовать команды из README компонента, например:
+
+```bash
+CUDA_VISIBLE_DEVICES=2 vllm serve Qwen/Qwen2.5-32B-Instruct --port 7114 --max-num-batched-tokens 8192 --max-model-len 8192
+CUDA_VISIBLE_DEVICES=3 vllm serve Qwen/Qwen2.5-3B-Instruct --port 7113 --max-num-batched-tokens 8192
+CUDA_VISIBLE_DEVICES=2 vllm serve jinaai/jina-embeddings-v3 --port 3300 --trust-remote-code --gpu-memory-utilization 0.05
+```
+
+После этого из `self-service-asap-eval`:
+
+```bash
+./scripts/init-rag-tool-asap.sh
+```
+
+Скрипт:
+
+- запускает `opensearch` и `minio-storage`;
+- ждёт готовности MinIO;
+- загружает canonical `asap.csv` в `minio/datasets/rag_tool_asap/doc/asap.csv`;
+- запускает `base_rag_tool_asap` через `self-service-orig/scenarios/compose.common.yaml`;
+- ждёт готовности `http://localhost:8100/ping`.
+
+Если инфраструктура уже поднята или датасет уже загружен:
+
+```bash
+./scripts/init-rag-tool-asap.sh --skip-infra --skip-upload
+```
+
+Посмотреть логи компонента:
+
+```bash
+cd ../self-service-orig/scenarios
+docker compose -f compose.common.yaml logs -f base_rag_tool_asap
+```
+
+## Запуск evaluation
+
+Полный baseline по всем вопросам:
+
+```bash
+./scripts/run-evaluation.sh
+```
+
+Это эквивалентно:
+
+```bash
+uv run asap-eval run --config config.toml --max-samples 0
+```
+
+`--max-samples 0` и любые значения меньше нуля означают “обработать весь датасет”.
+`--max-workers` по умолчанию берётся из `config.toml`.
+
+Smoke-run на 5 вопросах:
+
+```bash
+./scripts/run-evaluation.sh --max-samples 5
+```
+
+Переопределить параметры можно аргументами `asap-eval run`:
+
+```bash
+./scripts/run-evaluation.sh --max-samples 10 --max-workers 4 --overwrite
+```
+
+Также доступны низкоуровневые команды:
 
 ```bash
 uv sync --frozen
 uv run asap-eval audit --config config.toml
-```
-
-Collect a small smoke run after the component MCP server is ready:
-
-```bash
 uv run asap-eval collect --config config.toml --max-samples 5
+uv run asap-eval evaluate --config config.toml --run-dir results/<run-id> --max-workers 2
 ```
 
-Run RAGAS on an existing collection without calling the component again:
+## Артефакты
 
-```bash
-uv run asap-eval evaluate --config config.toml --run-dir results/<run-id>
+Каждый collection создаёт директорию:
+
+```text
+results/<UTC timestamp>-<short dataset hash>/
 ```
 
-Run collection and judging together:
+Внутри:
 
-```bash
-uv run asap-eval run --config config.toml --max-samples 5 --max-workers 2
-```
+- `run_manifest.json` — sanitized config, dataset audit, MCP preflight, версии, имена метрик,
+  состояние git для `self-service-orig` и имена judge-моделей; ключи маскируются;
+- `inference_samples.jsonl` — checkpointed inference record для каждой строки с вопросом;
+- `ragas_input.jsonl` — ordered `SingleTurnSample` payloads для RAGAS;
+- `scores.csv` — плоская таблица per-sample score с RAGAS-метриками, `context_hit`,
+  `title_hit`, статусом и source identity;
+- `scores.jsonl` — score records, объединённые с полной nested inference trace;
+- `summary.json` и `summary.md` — агрегаты, NaN/failure counts и retrieval accuracies.
 
-For the full baseline, omit `--max-samples` after validating smoke artifacts.
+Resume работает по `sample_id`: уже записанные строки из `inference_samples.jsonl` не вызываются
+повторно, если не передать `--overwrite` в `collect` или `run`.
 
-## Artifacts
-
-Each collection creates `results/<UTC timestamp>-<short dataset hash>/` containing:
-
-- `run_manifest.json` — sanitized config, dataset audit, MCP preflight, RAGAS version,
-  metric names, component git state, and model names. API keys are redacted.
-- `inference_samples.jsonl` — one checkpointed nested inference record per source query row.
-- `ragas_input.jsonl` — the ordered `SingleTurnSample` payloads sent to RAGAS.
-- `scores.csv` — per-sample flat score table with the five RAGAS metrics, `context_hit`,
-  `title_hit`, status, and source identity.
-- `scores.jsonl` — per-sample score records joined to the full nested inference trace.
-- `summary.json` and `summary.md` — aggregate means, valid/NaN/failure counts, and
-  deterministic retrieval accuracies.
-
-Resume behavior is based on `sample_id`. Completed records in `inference_samples.jsonl` are
-not reissued unless `--overwrite` is passed to `collect` or `run`.
-
-RAGAS judging is usually more expensive than answer collection. Validate a 5- or 10-sample
-smoke run before collecting and judging all 1,843 queries.
+RAGAS judging обычно дороже, чем collection ответов. Сначала проверьте smoke-run на 5-10
+примерах, затем запускайте полный baseline.
