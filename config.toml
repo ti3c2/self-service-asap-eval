@@ -1,4 +1,4 @@
-dataset_path = "../self-service-orig/services/components/rag_tool_asap/tests/files/asap.csv"
+dataset_path = "./data/squad_selected_full.csv"
 output_dir = "results"
 mcp_url = "http://localhost:8100/mcp/"
 tool_name = "RAG_ASAP"

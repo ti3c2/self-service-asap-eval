@@ -149,6 +149,13 @@ Smoke-run на 5 вопросах:
 ./scripts/run-evaluation.sh --max-samples 5
 ```
 
+Отдельная проверка MCP input contract для `RAG_ASAP`: валидный structured-запрос,
+ошибочные аргументы, пустой запрос и сырой invalid JSON без запуска RAGAS:
+
+```bash
+./scripts/run-input-contract-test.sh
+```
+
 Переопределить параметры можно аргументами `asap-eval run`:
 
 ```bash
