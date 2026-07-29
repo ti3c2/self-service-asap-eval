@@ -84,8 +84,12 @@ def test_atomic_artifact_helpers(tmp_path: Path) -> None:
     assert run_dir.name.endswith("abcdef123456")
 
     json_path = run_dir / "summary.json"
-    atomic_write_json(json_path, {"ok": True})
-    assert json.loads(json_path.read_text(encoding="utf-8")) == {"ok": True}
+    unicode_answer = "\N{CYRILLIC CAPITAL LETTER EN}\N{CYRILLIC SMALL LETTER A}"
+    atomic_write_json(json_path, {"answer": unicode_answer, "ok": True})
+    json_text = json_path.read_text(encoding="utf-8")
+    assert json.loads(json_text) == {"answer": unicode_answer, "ok": True}
+    assert unicode_answer in json_text
+    assert "\\u041d" not in json_text
 
     csv_path = run_dir / "scores.csv"
     atomic_write_csv(csv_path, [{"sample_id": "a", "score": 1}], ["sample_id", "score"])
@@ -94,5 +98,12 @@ def test_atomic_artifact_helpers(tmp_path: Path) -> None:
     jsonl_path = run_dir / "records.jsonl"
     assert append_jsonl_record_atomic(jsonl_path, {"sample_id": "a", "value": 1})
     assert not append_jsonl_record_atomic(jsonl_path, {"sample_id": "a", "value": 2})
-    assert append_jsonl_record_atomic(jsonl_path, {"sample_id": "a", "value": 2}, overwrite=True)
-    assert read_jsonl(jsonl_path) == [{"sample_id": "a", "value": 2}]
+    assert append_jsonl_record_atomic(
+        jsonl_path,
+        {"sample_id": "a", "answer": unicode_answer, "value": 2},
+        overwrite=True,
+    )
+    jsonl_text = jsonl_path.read_text(encoding="utf-8")
+    assert read_jsonl(jsonl_path) == [{"sample_id": "a", "answer": unicode_answer, "value": 2}]
+    assert unicode_answer in jsonl_text
+    assert "\\u041d" not in jsonl_text

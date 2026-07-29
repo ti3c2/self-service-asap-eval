@@ -24,7 +24,13 @@ def create_run_dir(output_dir: str | Path, dataset_sha256: str, *, now: datetime
 
 
 def atomic_write_json(path: str | Path, payload: Any) -> None:
-    _atomic_write_text(Path(path), json.dumps(_jsonable(payload), indent=2, sort_keys=True) + "\n")
+    text = json.dumps(
+        _jsonable(payload),
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
+    _atomic_write_text(Path(path), text + "\n")
 
 
 def write_manifest(path: str | Path, payload: Any) -> None:
@@ -51,7 +57,10 @@ def read_jsonl(path: str | Path, model: type[T] | None = None) -> list[T] | list
 
 
 def write_jsonl_atomic(path: str | Path, records: Iterable[Any]) -> None:
-    text = "".join(json.dumps(_jsonable(record), sort_keys=True) + "\n" for record in records)
+    text = "".join(
+        json.dumps(_jsonable(record), ensure_ascii=False, sort_keys=True) + "\n"
+        for record in records
+    )
     _atomic_write_text(Path(path), text)
 
 
