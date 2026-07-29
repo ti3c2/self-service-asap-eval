@@ -52,9 +52,9 @@ def parse_rag_asap_response(payload: Any, *, contexts_requested: bool = True) ->
     """Parse the structured response Agent B exposes through FastMCP.
 
     The parser accepts Pydantic model instances and plain dictionaries. It unwraps common MCP
-    result envelopes (`data`, `structuredContent`) but rejects a plain string whenever the
-    collector requested contexts, because judging an error/string fallback as an answer would
-    corrupt the benchmark.
+    result envelopes (`data`, `structuredContent`, `result`) but rejects a plain string
+    whenever the collector requested contexts, because judging an error/string fallback as an
+    answer would corrupt the benchmark.
     """
 
     candidate = _unwrap_mcp_payload(payload)
@@ -284,6 +284,9 @@ def _unwrap_mcp_payload(payload: Any) -> Any:
                     candidate = candidate[key]
                     break
             else:
+                if set(candidate) == {"result"}:
+                    candidate = candidate["result"]
+                    continue
                 return candidate
             continue
         return candidate

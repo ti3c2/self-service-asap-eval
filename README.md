@@ -156,6 +156,25 @@ Smoke-run на 5 вопросах:
 ./scripts/run-input-contract-test.sh
 ```
 
+Посмотреть, как живой компонент отвечает на сохранённые вопросы, какие retrieval-контексты
+и synthetic demonstrations он вернул:
+
+```bash
+./scripts/run-response-demo.sh
+```
+
+Вопросы для demo лежат в:
+
+```text
+data/rag_tool_demo_queries.json
+```
+
+Задать вопрос из CLI:
+
+```bash
+./scripts/run-response-demo.sh --question "Из чего состоит двухполюсное митотическое веретено?"
+```
+
 Переопределить параметры можно аргументами `asap-eval run`:
 
 ```bash
@@ -169,6 +188,7 @@ uv sync --frozen
 uv run asap-eval audit --config config.toml
 uv run asap-eval collect --config config.toml --max-samples 5
 uv run asap-eval evaluate --config config.toml --run-dir results/<run-id> --max-workers 2
+uv run asap-eval demo --config config.toml --limit 2
 ```
 
 ## Артефакты

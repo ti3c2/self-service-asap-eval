@@ -116,6 +116,15 @@ def test_parser_accepts_dict_and_pydantic_like_envelopes() -> None:
     assert parsed.retrieved_contexts[0].chunk_id == "chunk-1"
 
 
+def test_parser_unwraps_fastmcp_result_envelope() -> None:
+    parsed = parse_rag_asap_response(
+        {"structuredContent": {"result": ok_payload("Wrapped")}},
+        contexts_requested=True,
+    )
+    assert parsed.status == "ok"
+    assert parsed.answer == "Wrapped"
+
+
 def test_parser_rejects_plain_string_when_contexts_requested() -> None:
     with pytest.raises(MalformedMcpResponse, match="plain string"):
         parse_rag_asap_response("plain answer", contexts_requested=True)
