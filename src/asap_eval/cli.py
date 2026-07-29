@@ -92,7 +92,7 @@ def build_parser() -> argparse.ArgumentParser:
 def command_audit(args: argparse.Namespace) -> None:
     config = EvalConfig.from_toml(args.config)
     audit, _samples = load_dataset(config.dataset_path)
-    print(json.dumps(audit.model_dump(mode="json"), indent=2, sort_keys=True))
+    print(json.dumps(audit.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True))
 
 
 async def command_collect(args: argparse.Namespace) -> Path:

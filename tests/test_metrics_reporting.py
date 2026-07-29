@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 
+import pytest
 from ragas.dataset_schema import SingleTurnSample
 
 from asap_eval.metrics import RAGAS_METRIC_NAMES, custom_metric_summary
@@ -80,6 +82,8 @@ def test_context_and_title_hits_cover_hits_misses_duplicates_empty_and_failures(
     assert summary["title_hit_numerator"] == 2
     assert summary["context_accuracy"] == 0.25
     assert summary["title_accuracy"] == 0.5
+    assert summary["context_mrr"] == 0.125
+    assert summary["context_ndcg"] == pytest.approx(0.15773243839286438)
 
 
 def test_summary_exposes_nan_and_failure_counts() -> None:
@@ -154,3 +158,6 @@ def test_tiny_fake_end_to_end_writes_complete_artifact_set(tmp_path: Path) -> No
     }
     assert expected <= {path.name for path in tmp_path.iterdir()}
     assert "sample-1" in (tmp_path / "scores.csv").read_text(encoding="utf-8")
+    with (tmp_path / "scores.csv").open(encoding="utf-8", newline="") as f:
+        header = next(csv.reader(f))
+    assert {"context_reciprocal_rank", "context_ndcg"} <= set(header)

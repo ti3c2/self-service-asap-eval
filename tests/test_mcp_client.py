@@ -261,7 +261,10 @@ async def test_partially_written_run_resumes_without_duplicating_jsonl(tmp_path:
         "attempts": 1,
         "collected_at": "2026-07-20T00:00:00Z",
     }
-    checkpoint.write_text(json.dumps(complete) + "\n" + '{"sample_id": "torn"', encoding="utf-8")
+    checkpoint.write_text(
+        json.dumps(complete, ensure_ascii=False) + "\n" + '{"sample_id": "torn"',
+        encoding="utf-8",
+    )
 
     client = FakeClient([ok_payload("new")])
     records = await collect_samples(

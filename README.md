@@ -7,7 +7,7 @@ Evaluation pipeline делает три вещи:
 
 - запускает и подготавливает MCP-компонент `rag_tool_asap`;
 - собирает структурированные ответы инструмента `RAG_ASAP(..., return_contexts=True)`;
-- считает RAGAS `0.3.2` и deterministic retrieval-hit метрики по canonical ASAP dataset.
+- считает RAGAS `0.3.2` и deterministic retrieval/ranking метрики по canonical ASAP dataset.
 
 ## Связь с компонентом
 
@@ -206,9 +206,10 @@ results/<UTC timestamp>-<short dataset hash>/
 - `inference_samples.jsonl` — checkpointed inference record для каждой строки с вопросом;
 - `ragas_input.jsonl` — ordered `SingleTurnSample` payloads для RAGAS;
 - `scores.csv` — плоская таблица per-sample score с RAGAS-метриками, `context_hit`,
-  `title_hit`, статусом и source identity;
+  `title_hit`, `context_reciprocal_rank`, `context_ndcg`, статусом и source identity;
 - `scores.jsonl` — score records, объединённые с полной nested inference trace;
-- `summary.json` и `summary.md` — агрегаты, NaN/failure counts и retrieval accuracies.
+- `summary.json` и `summary.md` — агрегаты, NaN/failure counts, retrieval accuracies,
+  `context_mrr` и `context_ndcg`.
 
 Resume работает по `sample_id`: уже записанные строки из `inference_samples.jsonl` не вызываются
 повторно, если не передать `--overwrite` в `collect` или `run`.

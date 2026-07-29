@@ -51,7 +51,7 @@ raise_exceptions = false
     )
 
     config = EvalConfig.from_toml(config_path)
-    dumped = json.dumps(config.sanitized_model_dump())
+    dumped = json.dumps(config.sanitized_model_dump(), ensure_ascii=False)
     assert secret not in dumped
     assert "embed-secret-value" not in dumped
     assert "**********" in dumped

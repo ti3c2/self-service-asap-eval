@@ -22,7 +22,8 @@ def test_load_demo_queries_accepts_query_objects(tmp_path):
                     {"id": "known", "question": "What is known?"},
                     {"name": "alias", "query": "What is aliased?"},
                 ]
-            }
+            },
+            ensure_ascii=False,
         ),
         encoding="utf-8",
     )
