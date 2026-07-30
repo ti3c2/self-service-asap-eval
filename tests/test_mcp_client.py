@@ -116,6 +116,15 @@ def test_parser_accepts_dict_and_pydantic_like_envelopes() -> None:
     assert parsed.retrieved_contexts[0].chunk_id == "chunk-1"
 
 
+def test_parser_unwraps_fastmcp_result_envelope() -> None:
+    parsed = parse_rag_asap_response(
+        {"structuredContent": {"result": ok_payload("Wrapped")}},
+        contexts_requested=True,
+    )
+    assert parsed.status == "ok"
+    assert parsed.answer == "Wrapped"
+
+
 def test_parser_rejects_plain_string_when_contexts_requested() -> None:
     with pytest.raises(MalformedMcpResponse, match="plain string"):
         parse_rag_asap_response("plain answer", contexts_requested=True)
@@ -252,7 +261,10 @@ async def test_partially_written_run_resumes_without_duplicating_jsonl(tmp_path:
         "attempts": 1,
         "collected_at": "2026-07-20T00:00:00Z",
     }
-    checkpoint.write_text(json.dumps(complete) + "\n" + '{"sample_id": "torn"', encoding="utf-8")
+    checkpoint.write_text(
+        json.dumps(complete, ensure_ascii=False) + "\n" + '{"sample_id": "torn"',
+        encoding="utf-8",
+    )
 
     client = FakeClient([ok_payload("new")])
     records = await collect_samples(

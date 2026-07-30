@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,13 @@ from pydantic import BaseModel
 from .artifacts import create_run_dir, read_jsonl, write_manifest
 from .config import EvalConfig
 from .dataset import load_dataset
-from .mcp_client import collect_samples
+from .demo import (
+    demo_queries_from_cli,
+    load_demo_queries,
+    render_demo_error,
+    render_demo_response,
+)
+from .mcp_client import collect_samples, parse_rag_asap_response
 from .metrics import RAGAS_METRIC_NAMES
 from .models import InferenceRecord, PreflightResult
 from .ragas_runner import run_ragas_evaluation
@@ -31,6 +38,8 @@ def main(argv: list[str] | None = None) -> None:
         asyncio.run(command_collect(args))
     elif args.command == "evaluate":
         command_evaluate(args)
+    elif args.command == "demo":
+        asyncio.run(command_demo(args))
     elif args.command == "run":
         asyncio.run(command_run(args))
     else:  # pragma: no cover - argparse enforces a command
@@ -56,6 +65,21 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_cmd.add_argument("--run-dir", type=Path, required=True)
     evaluate_cmd.add_argument("--max-workers", type=int, default=None)
 
+    demo = subparsers.add_parser("demo", help="Print live answers and retrieval traces")
+    _add_config_arg(demo)
+    demo.add_argument("--queries", type=Path, default=Path("data/rag_tool_demo_queries.json"))
+    demo.add_argument(
+        "--question",
+        action="append",
+        default=None,
+        help="Ask an ad hoc question. Can be passed multiple times.",
+    )
+    demo.add_argument("--limit", type=int, default=None)
+    demo.add_argument("--max-contexts", type=int, default=6)
+    demo.add_argument("--max-demonstrations", type=int, default=4)
+    demo.add_argument("--snippet-chars", type=int, default=700)
+    demo.add_argument("--no-preflight", action="store_true")
+
     run_cmd = subparsers.add_parser("run", help="Collect answers, then run RAGAS")
     _add_config_arg(run_cmd)
     run_cmd.add_argument("--max-samples", type=int, default=None)
@@ -68,14 +92,13 @@ def build_parser() -> argparse.ArgumentParser:
 def command_audit(args: argparse.Namespace) -> None:
     config = EvalConfig.from_toml(args.config)
     audit, _samples = load_dataset(config.dataset_path)
-    print(json.dumps(audit.model_dump(mode="json"), indent=2, sort_keys=True))
+    print(json.dumps(audit.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True))
 
 
 async def command_collect(args: argparse.Namespace) -> Path:
     config = EvalConfig.from_toml(args.config)
     audit, samples = load_dataset(config.dataset_path)
-    if args.max_samples is not None:
-        samples = samples[: args.max_samples]
+    samples = _select_samples(samples, args.max_samples)
     output_dir = args.output_dir or config.output_dir
     run_dir = create_run_dir(output_dir, audit.dataset_sha256)
     preflight = await live_preflight(config)
@@ -115,6 +138,12 @@ def command_evaluate(args: argparse.Namespace) -> None:
     print(f"Wrote evaluation artifacts in {run_dir}")
 
 
+def _select_samples(samples: list[Any], max_samples: int | None) -> list[Any]:
+    if max_samples is None or max_samples <= 0:
+        return samples
+    return samples[:max_samples]
+
+
 async def command_run(args: argparse.Namespace) -> None:
     run_dir = await command_collect(args)
     evaluate_args = argparse.Namespace(
@@ -123,6 +152,67 @@ async def command_run(args: argparse.Namespace) -> None:
         max_workers=args.max_workers,
     )
     command_evaluate(evaluate_args)
+
+
+async def command_demo(args: argparse.Namespace) -> None:
+    from fastmcp import Client
+
+    config = EvalConfig.from_toml(args.config)
+    if args.question:
+        queries = demo_queries_from_cli(args.question)
+    else:
+        queries = load_demo_queries(args.queries)
+    queries = _select_samples(queries, args.limit)
+    if not queries:
+        print("No demo queries selected.")
+        return
+
+    if not args.no_preflight:
+        preflight = await live_preflight(config)
+        print(
+            f"Preflight OK: tool={preflight.tool_name} "
+            f"return_contexts={preflight.return_contexts_supported}"
+        )
+
+    failures = 0
+    async with Client(config.mcp_url) as client:
+        for index, query in enumerate(queries, start=1):
+            started = time.monotonic()
+            try:
+                raw_response = await asyncio.wait_for(
+                    client.call_tool(
+                        config.tool_name,
+                        {"user_query": query.question, "return_contexts": True},
+                    ),
+                    timeout=config.inference.timeout_seconds,
+                )
+                response = parse_rag_asap_response(raw_response, contexts_requested=True)
+                print(
+                    render_demo_response(
+                        index=index,
+                        total=len(queries),
+                        query=query,
+                        response=response,
+                        latency_seconds=time.monotonic() - started,
+                        max_contexts=args.max_contexts,
+                        max_demonstrations=args.max_demonstrations,
+                        snippet_chars=args.snippet_chars,
+                    )
+                )
+            except Exception as exc:
+                failures += 1
+                print(
+                    render_demo_error(
+                        index=index,
+                        total=len(queries),
+                        query=query,
+                        latency_seconds=time.monotonic() - started,
+                        error=exc,
+                    )
+                )
+
+    if failures:
+        raise RuntimeError(f"{failures} demo query call(s) failed.")
 
 
 def evaluate_run_dir(config: EvalConfig, run_dir: Path) -> dict[str, Any]:

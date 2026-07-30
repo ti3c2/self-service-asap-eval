@@ -8,8 +8,9 @@ from typing import Any
 from .artifacts import atomic_write_csv, atomic_write_json, write_jsonl_atomic
 from .dataset import DatasetAudit
 from .metrics import (
+    CUSTOM_METRIC_FIELDNAMES,
     collection_status_counts,
-    custom_metric_columns,
+    custom_metric_columns_by_sample_id,
     custom_metric_summary,
 )
 from .models import InferenceRecord
@@ -41,8 +42,7 @@ def write_evaluation_artifacts(
         "status",
         "error",
         *ragas_result.metric_names,
-        "context_hit",
-        "title_hit",
+        *CUSTOM_METRIC_FIELDNAMES,
     ]
     atomic_write_csv(run_path / "scores.csv", score_rows, score_fieldnames)
     write_jsonl_atomic(run_path / "scores.jsonl", build_score_jsonl(records, ragas_result))
@@ -64,6 +64,7 @@ def build_score_rows(
     ragas_result: RagasRunResult,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    custom_rows = custom_metric_columns_by_sample_id(records)
     for record in records:
         metric_values = ragas_result.scores_by_sample_id.get(record.sample_id, {})
         row = {
@@ -78,7 +79,7 @@ def build_score_rows(
                 metric_name: _csv_score(metric_values.get(metric_name))
                 for metric_name in ragas_result.metric_names
             },
-            **custom_metric_columns(record),
+            **custom_rows[record.sample_id],
         }
         rows.append(row)
     return rows
@@ -89,6 +90,7 @@ def build_score_jsonl(
     ragas_result: RagasRunResult,
 ) -> list[dict[str, Any]]:
     output: list[dict[str, Any]] = []
+    custom_rows = custom_metric_columns_by_sample_id(records)
     for record in records:
         metric_values = ragas_result.scores_by_sample_id.get(record.sample_id, {})
         output.append(
@@ -100,7 +102,7 @@ def build_score_jsonl(
                     metric_name: metric_values.get(metric_name)
                     for metric_name in ragas_result.metric_names
                 },
-                **custom_metric_columns(record),
+                **custom_rows[record.sample_id],
             }
         )
     return output
@@ -151,6 +153,8 @@ def summary_markdown(summary: dict[str, Any]) -> str:
         [
             f"- Context accuracy: {_format_score(custom['context_accuracy'])} "
             f"({custom['context_hit_numerator']}/{custom['denominator']})",
+            f"- Context MRR: {_format_score(custom['context_mrr'])}",
+            f"- Context nDCG: {_format_score(custom['context_ndcg'])}",
             f"- Title accuracy: {_format_score(custom['title_accuracy'])} "
             f"({custom['title_hit_numerator']}/{custom['denominator']})",
             "",

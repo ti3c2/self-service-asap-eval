@@ -10,8 +10,9 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
+from tqdm import tqdm
 
-from .artifacts import append_jsonl_record_atomic, read_checkpoint_by_sample_id
+from .artifacts import read_checkpoint_by_sample_id, write_jsonl_atomic
 from .config import InferenceConfig
 from .models import (
     DatasetSample,
@@ -51,9 +52,9 @@ def parse_rag_asap_response(payload: Any, *, contexts_requested: bool = True) ->
     """Parse the structured response Agent B exposes through FastMCP.
 
     The parser accepts Pydantic model instances and plain dictionaries. It unwraps common MCP
-    result envelopes (`data`, `structuredContent`) but rejects a plain string whenever the
-    collector requested contexts, because judging an error/string fallback as an answer would
-    corrupt the benchmark.
+    result envelopes (`data`, `structuredContent`, `result`) but rejects a plain string
+    whenever the collector requested contexts, because judging an error/string fallback as an
+    answer would corrupt the benchmark.
     """
 
     candidate = _unwrap_mcp_payload(payload)
@@ -129,31 +130,26 @@ async def collect_samples(
             to_issue.append((index, sample))
 
     semaphore = asyncio.Semaphore(inference.max_concurrency)
-    checkpoint_lock = asyncio.Lock()
 
     async with _managed_client(client_factory) as client:
-        async def worker(index: int, sample: DatasetSample) -> None:
-            async with semaphore:
-                record = await _collect_one(
-                    client,
-                    sample,
-                    tool_name=tool_name,
-                    inference=inference,
-                    call_shape=call_shape,
-                    sleep=sleep,
-                )
-                async with checkpoint_lock:
-                    append_jsonl_record_atomic(
-                        checkpoint_path,
-                        record,
-                        key_field="sample_id",
-                        overwrite=overwrite,
+        with tqdm(total=len(to_issue), desc="Collecting", unit="sample") as pbar:
+            async def worker(index: int, sample: DatasetSample) -> None:
+                async with semaphore:
+                    results[index] = await _collect_one(
+                        client,
+                        sample,
+                        tool_name=tool_name,
+                        inference=inference,
+                        call_shape=call_shape,
+                        sleep=sleep,
                     )
-                results[index] = record
+                    pbar.update(1)
 
-        await asyncio.gather(*(worker(index, sample) for index, sample in to_issue))
+            await asyncio.gather(*(worker(index, sample) for index, sample in to_issue))
 
-    return [record for record in results if record is not None]
+    collected = [record for record in results if record is not None]
+    write_jsonl_atomic(checkpoint_path, collected)
+    return collected
 
 
 async def _collect_one(
@@ -288,6 +284,9 @@ def _unwrap_mcp_payload(payload: Any) -> Any:
                     candidate = candidate[key]
                     break
             else:
+                if set(candidate) == {"result"}:
+                    candidate = candidate["result"]
+                    continue
                 return candidate
             continue
         return candidate

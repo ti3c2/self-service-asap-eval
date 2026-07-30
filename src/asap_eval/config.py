@@ -18,7 +18,7 @@ SECRET_FIELD_MARKER = "**********"
 class SafeBaseModel(BaseModel):
     """Base model with strict fields and a recursive sanitized dump."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
     def sanitized_model_dump(self) -> dict[str, Any]:
         return sanitize_for_manifest(self.model_dump(mode="python"))
@@ -39,12 +39,12 @@ class InferenceConfig(SafeBaseModel):
 
 
 class RagasConfig(SafeBaseModel):
-    max_workers: int = Field(default=8, gt=0)
-    timeout_seconds: float = Field(default=180, gt=0)
+    max_workers: int = Field(default=16, gt=0)
+    timeout_seconds: float = Field(default=600, gt=0)
     max_retries: int = Field(default=3, ge=0)
     max_wait_seconds: float = Field(default=60, gt=0)
     seed: int = 42
-    batch_size: int = Field(default=32, gt=0)
+    batch_size: int | None = None
     raise_exceptions: bool = False
 
 
