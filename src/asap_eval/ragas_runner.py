@@ -178,13 +178,12 @@ def _score_value(value: Any) -> float | None:
 
 
 def _require_judge_environment(judge: JudgeEnvironment) -> None:
+    # API keys may be empty: some judge endpoints do not require auth.
     missing = [
         name
         for name, value in {
-            "JUDGE_LLM_API_KEY": judge.llm_api_key,
             "JUDGE_LLM_BASE_URL": judge.llm_base_url,
             "JUDGE_LLM_MODEL_NAME": judge.llm_model_name,
-            "JUDGE_EMBED_API_KEY": judge.embed_api_key,
             "JUDGE_EMBED_BASE_URL": judge.embed_base_url,
             "JUDGE_EMBED_MODEL_NAME": judge.embed_model_name,
         }.items()
@@ -197,7 +196,12 @@ def _require_judge_environment(judge: JudgeEnvironment) -> None:
         )
 
 
+# OpenAI client rejects None/"" even for auth-free compatible endpoints.
+_UNSET_API_KEY_PLACEHOLDER = "EMPTY"
+
+
 def _secret_value(value: SecretStr | None) -> str:
     if value is None:
-        return ""
-    return value.get_secret_value()
+        return _UNSET_API_KEY_PLACEHOLDER
+    secret = value.get_secret_value()
+    return secret if secret else _UNSET_API_KEY_PLACEHOLDER
