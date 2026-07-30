@@ -172,7 +172,7 @@ data/rag_tool_demo_queries.json
 Задать вопрос из CLI:
 
 ```bash
-./scripts/run-response-demo.sh --question "Из чего состоит двухполюсное митотическое веретено?"
+./scripts/run-response-demo.sh --question "Что находится на вершине главного здания Нотр-Дам?"
 ```
 
 Переопределить параметры можно аргументами `asap-eval run`:
