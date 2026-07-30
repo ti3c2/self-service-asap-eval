@@ -1,4 +1,4 @@
-# Evaluation suite для `rag_tool_asap`
+# Среда для тестирования `rag_tool_asap`
 
 Этот репозиторий — полный набор скриптов и кода для проверки компонента
 `rag_tool_asap` из соседнего `self-service-orig`.
