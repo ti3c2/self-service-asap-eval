@@ -19,6 +19,7 @@ Environment overrides:
   DATASET                           Path to canonical ASAP CSV.
   MINIO_WAIT_TIMEOUT_SECONDS        MinIO wait timeout, default: 120.
   COMPONENT_WAIT_TIMEOUT_SECONDS    Readiness wait timeout, default: 7200.
+  STREAM_COMPONENT_LOGS             Stream component logs while waiting, default: 1.
 EOF
 }
 
@@ -71,6 +72,35 @@ wait_for_minio() {
   done
 }
 
+show_component_logs() {
+  if docker inspect "$COMPONENT_CONTAINER" >/dev/null 2>&1; then
+    log "Recent component logs from $COMPONENT_CONTAINER:"
+    docker logs --tail "${COMPONENT_LOG_TAIL:-120}" "$COMPONENT_CONTAINER" || true
+  else
+    log "Component container was not found: $COMPONENT_CONTAINER"
+  fi
+}
+
+start_component_log_stream() {
+  if [[ "${STREAM_COMPONENT_LOGS:-1}" != "1" ]]; then
+    return
+  fi
+  if ! docker inspect "$COMPONENT_CONTAINER" >/dev/null 2>&1; then
+    return
+  fi
+  log "Streaming component logs from $COMPONENT_CONTAINER while waiting."
+  docker logs --follow --tail "${COMPONENT_LOG_TAIL:-80}" "$COMPONENT_CONTAINER" &
+  COMPONENT_LOG_STREAM_PID="$!"
+}
+
+stop_component_log_stream() {
+  if [[ -n "${COMPONENT_LOG_STREAM_PID:-}" ]]; then
+    kill "$COMPONENT_LOG_STREAM_PID" >/dev/null 2>&1 || true
+    wait "$COMPONENT_LOG_STREAM_PID" >/dev/null 2>&1 || true
+    COMPONENT_LOG_STREAM_PID=""
+  fi
+}
+
 wait_for_component() {
   local url="$1"
   local timeout_seconds="$2"
@@ -78,18 +108,31 @@ wait_for_component() {
   started_at="$(date +%s)"
 
   log "Waiting for component readiness at $url"
+  start_component_log_stream
   while true; do
     if curl --fail --silent "$url" >/dev/null 2>&1; then
+      stop_component_log_stream
       log "Component is ready."
       return
+    fi
+
+    local container_status
+    container_status="$(docker inspect --format '{{.State.Status}}' "$COMPONENT_CONTAINER" 2>/dev/null || true)"
+    if [[ "$container_status" == "exited" || "$container_status" == "dead" ]]; then
+      stop_component_log_stream
+      log "ERROR: component container stopped before readiness: status=$container_status"
+      show_component_logs
+      return 1
     fi
 
     local now elapsed
     now="$(date +%s)"
     elapsed=$((now - started_at))
     if (( elapsed >= timeout_seconds )); then
+      stop_component_log_stream
       log "ERROR: component did not become ready in ${timeout_seconds}s."
       log "Check logs with: cd \"$ORIG_ROOT/scenarios\" && docker compose -f compose.common.yaml logs -f base_rag_tool_asap"
+      show_component_logs
       return 1
     fi
     sleep 10
@@ -133,6 +176,7 @@ EVAL_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 ORIG_ROOT="${ORIG_ROOT:-$EVAL_ROOT/../self-service-orig}"
 COMPONENT_HEALTH_URL="${COMPONENT_HEALTH_URL:-http://localhost:8100/ping}"
 COMPONENT_WAIT_TIMEOUT_SECONDS="${COMPONENT_WAIT_TIMEOUT_SECONDS:-7200}"
+COMPONENT_CONTAINER="${COMPONENT_CONTAINER:-scenarios-base_rag_tool_asap-1}"
 
 if [[ ! -d "$ORIG_ROOT" ]]; then
   log "ERROR: self-service-orig was not found at $ORIG_ROOT"
