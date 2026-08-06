@@ -211,6 +211,9 @@ results/<UTC timestamp>-<short dataset hash>/
 - `summary.json` и `summary.md` — агрегаты, NaN/failure counts, retrieval accuracies,
   `context_mrr` и `context_ndcg`.
 
+`context_ndcg` считается по retrieval trace как сумма discounted hits точного `chunk_id`,
+делённая на сумму discounts по всем возвращённым контекстам.
+
 Resume работает по `sample_id`: уже записанные строки из `inference_samples.jsonl` не вызываются
 повторно, если не передать `--overwrite` в `collect` или `run`.
 

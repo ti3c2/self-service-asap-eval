@@ -83,7 +83,7 @@ def test_context_and_title_hits_cover_hits_misses_duplicates_empty_and_failures(
     assert summary["context_accuracy"] == 0.25
     assert summary["title_accuracy"] == 0.5
     assert summary["context_mrr"] == 0.125
-    assert summary["context_ndcg"] == pytest.approx(0.15773243839286438)
+    assert summary["context_ndcg"] == pytest.approx(0.13268031849431086)
 
 
 def test_summary_exposes_nan_and_failure_counts() -> None:

@@ -5,7 +5,7 @@ from collections import Counter
 from typing import Any
 
 import ir_measures
-from ir_measures import RR, nDCG
+from ir_measures import RR
 from ragas.metrics import (
     AnswerAccuracy,
     ContextRelevance,
@@ -117,20 +117,13 @@ def _context_ranking_metrics_by_sample_id(
     output = {
         record.sample_id: {
             "context_reciprocal_rank": 0.0,
-            "context_ndcg": 0.0,
+            "context_ndcg": _retrieval_list_normalized_ndcg(record),
         }
         for record in records
     }
-    for metric in ir_measures.iter_calc([RR, nDCG], qrels, run):
-        column = _IR_MEASURE_COLUMNS[str(metric.measure)]
-        output[metric.query_id][column] = float(metric.value)
+    for metric in ir_measures.iter_calc([RR], qrels, run):
+        output[metric.query_id]["context_reciprocal_rank"] = float(metric.value)
     return output
-
-
-_IR_MEASURE_COLUMNS = {
-    "RR": "context_reciprocal_rank",
-    "nDCG": "context_ndcg",
-}
 
 
 def _run_scores_from_ranked_contexts(record: InferenceRecord) -> dict[str, float]:
@@ -141,3 +134,25 @@ def _run_scores_from_ranked_contexts(record: InferenceRecord) -> dict[str, float
             continue
         scores[context.chunk_id] = float(total_contexts - index)
     return scores
+
+
+def _retrieval_list_normalized_ndcg(record: InferenceRecord) -> float:
+    retrieved_ids = [context.chunk_id for context in record.retrieved_contexts]
+    if not retrieved_ids:
+        return 0.0
+
+    relevant_id = record.source.chunk_id
+    if relevant_id not in set(retrieved_ids):
+        return 0.0
+
+    dcg = sum(
+        _discount(rank)
+        for rank, chunk_id in enumerate(retrieved_ids)
+        if chunk_id == relevant_id
+    )
+    normalizer = sum(_discount(rank) for rank in range(len(retrieved_ids)))
+    return dcg / normalizer if normalizer else 0.0
+
+
+def _discount(rank: int) -> float:
+    return 1.0 / math.log2(rank + 2)
