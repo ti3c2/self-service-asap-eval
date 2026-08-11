@@ -91,15 +91,65 @@ JUDGE_EMBED_MODEL_NAME
 Заполните секреты в `../self-service-orig/secrets/*.env`. Скрипт создаст отсутствующие файлы
 из `.example`, но реальные адреса и ключи для LLM/embedding нужно прописать вручную.
 
-Для локального запуска моделей можно использовать команды из README компонента, например:
+Для локального запуска моделей можно использовать отдельный launcher:
 
 ```bash
-CUDA_VISIBLE_DEVICES=2 vllm serve Qwen/Qwen2.5-32B-Instruct --port 7114 --max-num-batched-tokens 8192 --max-model-len 8192
-CUDA_VISIBLE_DEVICES=3 vllm serve Qwen/Qwen2.5-3B-Instruct --port 7113 --max-num-batched-tokens 8192
-CUDA_VISIBLE_DEVICES=2 vllm serve jinaai/jina-embeddings-v3 --port 3300 --trust-remote-code --gpu-memory-utilization 0.05
+./scripts/launch-test-models.sh
 ```
 
-После этого из `self-service-asap-eval`:
+Launcher по умолчанию запускает vLLM как `uv run --no-sync vllm`, поэтому `vllm` должен быть
+доступен в `.venv` этого проекта. Если он ещё не установлен:
+
+```bash
+uv pip install vllm
+```
+
+Если нужно использовать системный или другой executable, задайте `VLLM_BIN`:
+
+```bash
+VLLM_BIN=/path/to/vllm ./scripts/launch-test-models.sh
+```
+
+Перед запуском серверов launcher проверяет доступность vLLM и завершится сразу, если executable
+не найден.
+
+По умолчанию launcher также задаёт `VLLM_USE_FLASHINFER_SAMPLER=0`, чтобы vLLM не падал на
+FlashInfer JIT-компиляции в окружениях без CUDA header `curand.h`. Если CUDA toolkit установлен
+полностью и нужен FlashInfer sampler, можно вернуть его:
+
+```bash
+VLLM_USE_FLASHINFER_SAMPLER=1 ./scripts/launch-test-models.sh
+```
+
+По умолчанию он запускает:
+
+- large LM: `Qwen/Qwen2.5-32B-Instruct` на CUDA device `0`, port `7114`;
+- small LM: `Qwen/Qwen2.5-7B-Instruct` на CUDA device `1`, port `7113`;
+- embeddings: `jinaai/jina-embeddings-v3` на CUDA device `1`, port `3300`.
+
+Логи пишутся в `logs/vllm/`. Скрипт ждёт готовности каждого OpenAI-compatible endpoint через
+`/v1/models` и печатает `All model servers are ready.` только после успешной проверки всех трёх
+серверов. Если процесс падает при старте или endpoint не поднимается за timeout, скрипт выводит
+последние строки соответствующего log-файла и завершает работу.
+
+Основные overrides:
+
+```bash
+LARGE_LM_CUDA_VISIBLE_DEVICES=2 \
+SMALL_LM_CUDA_VISIBLE_DEVICES=3 \
+JINA_CUDA_VISIBLE_DEVICES=2 \
+./scripts/launch-test-models.sh
+```
+
+Также можно переопределить `LARGE_LM_MODEL`, `LARGE_LM_PORT`, `SMALL_LM_MODEL`,
+`SMALL_LM_PORT`, `JINA_EMBEDDINGS_MODEL`, `JINA_PORT`, `TEST_MODEL_READY_TIMEOUT`
+и `TEST_MODEL_LOG_DIR`. Полный список:
+
+```bash
+./scripts/launch-test-models.sh --help
+```
+
+После готовности моделей из `self-service-asap-eval`:
 
 ```bash
 ./scripts/init-rag-tool-asap.sh
