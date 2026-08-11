@@ -145,7 +145,7 @@ def summary_markdown(summary: dict[str, Any]) -> str:
         f"- RAGAS scored samples: {summary['ragas_scored_count']}",
         f"- Collection status counts: {summary['collection_status_counts']}",
         "",
-        "## Custom retrieval metrics",
+        "## Retrieval metrics",
         "",
     ]
     custom = summary["custom_metrics"]
