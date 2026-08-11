@@ -5,10 +5,10 @@ tool_name = "RAG_ASAP"
 
 [inference]
 max_concurrency = 64
-timeout_seconds = 120
+timeout_seconds = 180
 max_retries = 3
 initial_backoff_seconds = 0.25
-max_backoff_seconds = 5
+max_backoff_seconds = 60
 
 [ragas]
 max_workers = 64
