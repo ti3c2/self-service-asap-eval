@@ -199,6 +199,18 @@ Smoke-run на 5 вопросах:
 ./scripts/run-evaluation.sh --max-samples 5
 ```
 
+Запуск с другим CSV-датасетом без изменения `config.toml`:
+
+```bash
+./scripts/run-evaluation.sh --dataset-path data/squad_selected_full_en.csv
+```
+
+То же самое через окружение:
+
+```bash
+DATASET_PATH=data/squad_selected_full_en.csv ./scripts/run-evaluation.sh
+```
+
 Отдельная проверка MCP input contract для `RAG_ASAP`: валидный structured-запрос,
 ошибочные аргументы, пустой запрос и сырой invalid JSON без запуска RAGAS:
 
@@ -235,9 +247,9 @@ data/rag_tool_demo_queries.json
 
 ```bash
 uv sync --frozen
-uv run asap-eval audit --config config.toml
-uv run asap-eval collect --config config.toml --max-samples 5
-uv run asap-eval evaluate --config config.toml --run-dir results/<run-id> --max-workers 2
+uv run asap-eval audit --config config.toml --dataset-path data/squad_selected_full_en.csv
+uv run asap-eval collect --config config.toml --dataset-path data/squad_selected_full_en.csv --max-samples 5
+uv run asap-eval evaluate --config config.toml --dataset-path data/squad_selected_full_en.csv --run-dir results/<run-id> --max-workers 2
 uv run asap-eval demo --config config.toml --limit 2
 ```
 

@@ -53,15 +53,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     audit = subparsers.add_parser("audit", help="Audit the configured dataset")
     _add_config_arg(audit)
+    _add_dataset_path_arg(audit)
 
     collect = subparsers.add_parser("collect", help="Collect structured MCP answers")
     _add_config_arg(collect)
+    _add_dataset_path_arg(collect)
     collect.add_argument("--max-samples", type=int, default=None)
     collect.add_argument("--output-dir", type=Path, default=None)
     collect.add_argument("--overwrite", action="store_true")
 
     evaluate_cmd = subparsers.add_parser("evaluate", help="Run RAGAS on collected answers")
     _add_config_arg(evaluate_cmd)
+    _add_dataset_path_arg(evaluate_cmd)
     evaluate_cmd.add_argument("--run-dir", type=Path, required=True)
     evaluate_cmd.add_argument("--max-workers", type=int, default=None)
 
@@ -82,6 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_cmd = subparsers.add_parser("run", help="Collect answers, then run RAGAS")
     _add_config_arg(run_cmd)
+    _add_dataset_path_arg(run_cmd)
     run_cmd.add_argument("--max-samples", type=int, default=None)
     run_cmd.add_argument("--output-dir", type=Path, default=None)
     run_cmd.add_argument("--overwrite", action="store_true")
@@ -90,13 +94,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def command_audit(args: argparse.Namespace) -> None:
-    config = EvalConfig.from_toml(args.config)
+    config = _load_config(args)
     audit, _samples = load_dataset(config.dataset_path)
     print(json.dumps(audit.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True))
 
 
 async def command_collect(args: argparse.Namespace) -> Path:
-    config = EvalConfig.from_toml(args.config)
+    config = _load_config(args)
     audit, samples = load_dataset(config.dataset_path)
     samples = _select_samples(samples, args.max_samples)
     output_dir = args.output_dir or config.output_dir
@@ -124,7 +128,7 @@ async def command_collect(args: argparse.Namespace) -> Path:
 
 
 def command_evaluate(args: argparse.Namespace) -> None:
-    config = EvalConfig.from_toml(args.config)
+    config = _load_config(args)
     if args.max_workers is not None:
         config = config.model_copy(
             update={
@@ -148,6 +152,7 @@ async def command_run(args: argparse.Namespace) -> None:
     run_dir = await command_collect(args)
     evaluate_args = argparse.Namespace(
         config=args.config,
+        dataset_path=args.dataset_path,
         run_dir=run_dir,
         max_workers=args.max_workers,
     )
@@ -375,3 +380,20 @@ def _field(value: Any, name: str) -> Any:
 
 def _add_config_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", type=Path, required=True)
+
+
+def _add_dataset_path_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--dataset-path",
+        type=Path,
+        default=None,
+        help="Override dataset_path from config.toml.",
+    )
+
+
+def _load_config(args: argparse.Namespace) -> EvalConfig:
+    config = EvalConfig.from_toml(args.config)
+    dataset_path = getattr(args, "dataset_path", None)
+    if dataset_path is not None:
+        config = config.model_copy(update={"dataset_path": dataset_path})
+    return config
