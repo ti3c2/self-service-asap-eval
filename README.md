@@ -218,6 +218,8 @@ DATASET_PATH=data/squad_selected_full_en.csv ./scripts/run-evaluation.sh
 ./scripts/run-input-contract-test.sh
 ```
 
+Тот же MCP endpoint можно дернуть напрямую через `curl`: скрипт `scripts/curl-mcp-request.sh`.
+
 Посмотреть, как живой компонент отвечает на сохранённые вопросы, какие retrieval-контексты
 и synthetic demonstrations он вернул:
 
