@@ -160,6 +160,7 @@ EMB_CUDA_VISIBLE_DEVICES=2 \
 - запускает `opensearch` и `minio-storage`;
 - ждёт готовности MinIO;
 - загружает canonical `asap.csv` в `minio/datasets/rag_tool_asap/doc/asap.csv`;
+- ждёт готовности OpenSearch;
 - запускает `base_rag_tool_asap` через `self-service-asap/scenarios/compose.common.yaml`;
 - ждёт готовности `http://localhost:8100/ping`.
 
