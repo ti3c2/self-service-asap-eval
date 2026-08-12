@@ -15,7 +15,7 @@ Options:
   -h, --help         Show this help.
 
 Environment overrides:
-  ORIG_ROOT                         Path to self-service-orig.
+  ORIG_ROOT                         Path to self-service-asap.
   DATASET                           Path to canonical ASAP CSV.
   MINIO_WAIT_TIMEOUT_SECONDS        MinIO wait timeout, default: 120.
   COMPONENT_WAIT_TIMEOUT_SECONDS    Readiness wait timeout, default: 7200.
@@ -173,13 +173,13 @@ done
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 EVAL_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-ORIG_ROOT="${ORIG_ROOT:-$EVAL_ROOT/../self-service-orig}"
+ORIG_ROOT="${ORIG_ROOT:-$EVAL_ROOT/../self-service-asap}"
 COMPONENT_HEALTH_URL="${COMPONENT_HEALTH_URL:-http://localhost:8100/ping}"
 COMPONENT_WAIT_TIMEOUT_SECONDS="${COMPONENT_WAIT_TIMEOUT_SECONDS:-7200}"
 COMPONENT_CONTAINER="${COMPONENT_CONTAINER:-scenarios-base_rag_tool_asap-1}"
 
 if [[ ! -d "$ORIG_ROOT" ]]; then
-  log "ERROR: self-service-orig was not found at $ORIG_ROOT"
+  log "ERROR: self-service-asap was not found at $ORIG_ROOT"
   exit 1
 fi
 ORIG_ROOT="$(cd -- "$ORIG_ROOT" && pwd)"
@@ -218,7 +218,7 @@ copy_example_if_missing "$ORIG_ROOT/secrets/description_gen.llm.env"
 copy_example_if_missing "$ORIG_ROOT/secrets/embedder.llm.env"
 
 if (( SKIP_INFRA == 0 )); then
-  log "Starting OpenSearch and MinIO from self-service-orig."
+  log "Starting OpenSearch and MinIO from self-service-asap."
   (
     cd "$ORIG_ROOT"
     docker compose up -d opensearch minio-storage
@@ -243,7 +243,7 @@ fi
 
 if (( SKIP_COMPONENT == 0 )); then
   log "Starting rag_tool_asap MCP component on http://localhost:8100."
-  log "Make sure LLM, preprocessing LLM and embedding endpoints from self-service-orig/secrets/*.env are reachable."
+  log "Make sure LLM, preprocessing LLM and embedding endpoints from self-service-asap/secrets/*.env are reachable."
   (
     cd "$ORIG_ROOT/scenarios"
     docker compose -f compose.common.yaml up --build --force-recreate -d base_rag_tool_asap

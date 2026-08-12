@@ -8,7 +8,7 @@ Usage: scripts/run-input-contract-test.sh [pytest options]
 Run the rag_tool_asap MCP input-contract test from self-service-asap-eval.
 
 Environment overrides:
-  ORIG_ROOT             Path to self-service-orig.
+  ORIG_ROOT             Path to self-service-asap.
   BASE_SERVER_URL       Component base URL, default: http://localhost:8100.
   COMPONENT_HEALTH_URL  Readiness URL, default: $BASE_SERVER_URL/ping.
   SKIP_PREFLIGHT        Set to 1 to skip the readiness check.
@@ -26,10 +26,10 @@ fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 EVAL_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-ORIG_ROOT="${ORIG_ROOT:-$EVAL_ROOT/../self-service-orig}"
+ORIG_ROOT="${ORIG_ROOT:-$EVAL_ROOT/../self-service-asap}"
 
 if [[ ! -d "$ORIG_ROOT" ]]; then
-  log "ERROR: self-service-orig was not found at $ORIG_ROOT"
+  log "ERROR: self-service-asap was not found at $ORIG_ROOT"
   exit 1
 fi
 

@@ -1,7 +1,7 @@
 # Среда для тестирования `rag_tool_asap`
 
 Этот репозиторий — полный набор скриптов и кода для проверки компонента
-`rag_tool_asap` из соседнего `self-service-orig`.
+`rag_tool_asap` из соседнего `self-service-asap`.
 
 Evaluation pipeline делает три вещи:
 
@@ -14,13 +14,13 @@ Evaluation pipeline делает три вещи:
 Компонент живёт здесь:
 
 ```text
-../self-service-orig/services/components/rag_tool_asap
+../self-service-asap/services/components/rag_tool_asap
 ```
 
 Его UI/конфигурационная спецификация описана в:
 
 ```text
-../self-service-orig/packages/component_specs/src/self_service/component_specs/components/rag_tool_asap
+../self-service-asap/packages/component_specs/src/self_service/component_specs/components/rag_tool_asap
 ```
 
 `component_specs` задаёт `ComponentConf`: модели, CSV-файл, `triplet_top_k`,
@@ -32,7 +32,7 @@ Evaluation pipeline делает три вещи:
 Canonical dataset берётся из fixture компонента:
 
 ```text
-../self-service-orig/services/components/rag_tool_asap/tests/files/asap.csv
+../self-service-asap/services/components/rag_tool_asap/tests/files/asap.csv
 ```
 
 Ожидаемый audit:
@@ -83,12 +83,12 @@ JUDGE_EMBED_MODEL_NAME
 Перед evaluation нужно поднять реальные зависимости компонента:
 
 - Docker;
-- OpenSearch и MinIO из `self-service-orig`;
+- OpenSearch и MinIO из `self-service-asap`;
 - LLM endpoint для online-ответов;
 - preprocessing LLM endpoint для генерации synthetic QA;
 - embedding endpoint.
 
-Заполните секреты в `../self-service-orig/secrets/*.env`. Скрипт создаст отсутствующие файлы
+Заполните секреты в `../self-service-asap/secrets/*.env`. Скрипт создаст отсутствующие файлы
 из `.example`, но реальные адреса и ключи для LLM/embedding нужно прописать вручную.
 
 Для локального запуска моделей можно использовать отдельный launcher:
@@ -160,7 +160,7 @@ EMB_CUDA_VISIBLE_DEVICES=2 \
 - запускает `opensearch` и `minio-storage`;
 - ждёт готовности MinIO;
 - загружает canonical `asap.csv` в `minio/datasets/rag_tool_asap/doc/asap.csv`;
-- запускает `base_rag_tool_asap` через `self-service-orig/scenarios/compose.common.yaml`;
+- запускает `base_rag_tool_asap` через `self-service-asap/scenarios/compose.common.yaml`;
 - ждёт готовности `http://localhost:8100/ping`.
 
 Если инфраструктура уже поднята или датасет уже загружен:
@@ -172,7 +172,7 @@ EMB_CUDA_VISIBLE_DEVICES=2 \
 Посмотреть логи компонента:
 
 ```bash
-cd ../self-service-orig/scenarios
+cd ../self-service-asap/scenarios
 docker compose -f compose.common.yaml logs -f base_rag_tool_asap
 ```
 
@@ -266,7 +266,7 @@ results/<UTC timestamp>-<short dataset hash>/
 Внутри:
 
 - `run_manifest.json` — sanitized config, dataset audit, MCP preflight, версии, имена метрик,
-  состояние git для `self-service-orig` и имена judge-моделей; ключи маскируются;
+  состояние git для `self-service-asap` и имена judge-моделей; ключи маскируются;
 - `inference_samples.jsonl` — checkpointed inference record для каждой строки с вопросом;
 - `ragas_input.jsonl` — ordered `SingleTurnSample` payloads для RAGAS;
 - `scores.csv` — плоская таблица per-sample score с RAGAS-метриками, `context_hit`,

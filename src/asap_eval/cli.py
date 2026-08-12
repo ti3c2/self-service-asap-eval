@@ -321,7 +321,7 @@ def build_run_manifest(
 
 
 def component_git_state() -> dict[str, Any]:
-    repo = Path(__file__).resolve().parents[3] / "self-service-orig"
+    repo = Path(__file__).resolve().parents[3] / "self-service-asap"
     if not repo.exists():
         return {"repo": str(repo), "available": False}
     commit = _git_output(repo, ["git", "rev-parse", "HEAD"])
