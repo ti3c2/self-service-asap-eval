@@ -1,7 +1,61 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
 MCP_URL="${MCP_URL:-http://localhost:8100/mcp}"
+MCP_URL="${MCP_URL%/}"
 MCP_PROTOCOL_VERSION="2025-06-18"
+QUERY=""
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/curl-mcp-request.sh -q <query>
+
+Call the RAG_ASAP MCP tool directly with curl.
+
+Options:
+  -q, --query <query>  Query to pass to the MCP tool.
+  -h, --help           Show this help.
+
+Environment:
+  MCP_URL              MCP endpoint, default: http://localhost:8100/mcp.
+EOF
+}
+
+die() {
+  printf '[asap-eval:curl-mcp] ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -q|--query)
+      [[ $# -ge 2 ]] || die "$1 requires a value"
+      QUERY="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+[[ -n "$QUERY" ]] || die "query is required; pass it with -q or --query"
+
+QUERY_JSON="$(json_escape "$QUERY")"
 
 SESSION_ID="$(
   curl -fisS "$MCP_URL" \
@@ -21,9 +75,8 @@ SESSION_ID="$(
     | tr -d '\r'
 )"
 
-if [ -z "$SESSION_ID" ]; then
-  echo "MCP initialize did not return a session id. Check that MCP_URL has no trailing slash: $MCP_URL" >&2
-  exit 1
+if [[ -z "$SESSION_ID" ]]; then
+  die "MCP initialize did not return a session id from $MCP_URL"
 fi
 
 curl -sS "$MCP_URL" \
@@ -46,7 +99,7 @@ curl -sS --no-buffer "$MCP_URL" \
     "params": {
       "name": "RAG_ASAP",
       "arguments": {
-        "user_query": "Из чего состоит двухполюсное митотическое веретено?",
+        "user_query": "'"$QUERY_JSON"'",
         "return_contexts": true
       }
     }

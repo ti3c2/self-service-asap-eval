@@ -1,0 +1,172 @@
+{
+  "jsonrpc": "2.0",
+  "id": "rag-call",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "A golden statue of the Virgin Mary."
+      }
+    ],
+    "structuredContent": {
+      "status": "ok",
+      "answer": "A golden statue of the Virgin Mary.",
+      "error": null,
+      "demonstrations": [
+        {
+          "synthetic_id": "3ef4829f859b4abcb41f470f350a4154",
+          "synthetic_rank": 1,
+          "synthetic_score": 0.79598135,
+          "reference_question": "Which religious structure is situated next to the Main Building?",
+          "reference_answer": "The Basilica of the Sacred Heart.",
+          "source_chunk_id": "94a99bff525e95b2237edd771e726b5f77527d60896483ac09fd7385dba4ac0d",
+          "source_doc_title": "University_of_Notre_Dame",
+          "contexts": [
+            {
+              "text": "Architecturally, the school has a Catholic character. Atop the Main Building's gold dome is a golden statue of the Virgin Mary. Immediately in front of the Main Building and facing it, is a copper statue of Christ with arms upraised with the legend \"Venite Ad Me Omnes\". Next to the Main Building is the Basilica of the Sacred Heart. Immediately behind the basilica is the Grotto, a Marian place of prayer and reflection. It is a replica of the grotto at Lourdes, France where the Virgin Mary reputedly appeared to Saint Bernadette Soubirous in 1858. At the end of the main drive (and in a direct line that connects through 3 statues and the Gold Dome), is a simple, modern stone statue of Mary.",
+              "chunk_id": "94a99bff525e95b2237edd771e726b5f77527d60896483ac09fd7385dba4ac0d",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:94a99bff525e95b2237edd771e726b5f77527d60896483ac09fd7385dba4ac0d",
+              "doc_title": "University_of_Notre_Dame",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 1,
+              "synthetic_id": "3ef4829f859b4abcb41f470f350a4154",
+              "synthetic_rank": 1,
+              "context_rank": 1,
+              "synthetic_score": 0.79598135,
+              "preprocessing_chunk_score": 0.7846079
+            },
+            {
+              "text": "The university is the major seat of the Congregation of Holy Cross (albeit not its official headquarters, which are in Rome). Its main seminary, Moreau Seminary, is located on the campus across St. Joseph lake from the Main Building. Old College, the oldest building on campus and located near the shore of St. Mary lake, houses undergraduate seminarians. Retired priests and brothers reside in Fatima House (a former retreat center), Holy Cross House, as well as Columba Hall near the Grotto. The university through the Moreau Seminary has ties to theologian Frederick Buechner. While not Catholic, Buechner has praised writers from Notre Dame and Moreau Seminary created a Buechner Prize for Preaching.",
+              "chunk_id": "3787a46bd23562af4506bf8b742459ff83347ad4a029818d5d8541f4f9b6e109",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:3787a46bd23562af4506bf8b742459ff83347ad4a029818d5d8541f4f9b6e109",
+              "doc_title": "University_of_Notre_Dame",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 2,
+              "synthetic_id": "3ef4829f859b4abcb41f470f350a4154",
+              "synthetic_rank": 1,
+              "context_rank": 2,
+              "synthetic_score": 0.79598135,
+              "preprocessing_chunk_score": 0.73849076
+            },
+            {
+              "text": "The library system of the university is divided between the main library and each of the colleges and schools. The main building is the 14-story Theodore M. Hesburgh Library, completed in 1963, which is the third building to house the main collection of books. The front of the library is adorned with the Word of Life mural designed by artist Millard Sheets. This mural is popularly known as \"Touchdown Jesus\" because of its proximity to Notre Dame Stadium and Jesus' arms appearing to make the signal for a touchdown.",
+              "chunk_id": "827dab666a13cddec0287e44ee479902a1d5f4a676cd6a2643a49fc801d34e50",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:827dab666a13cddec0287e44ee479902a1d5f4a676cd6a2643a49fc801d34e50",
+              "doc_title": "University_of_Notre_Dame",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 3,
+              "synthetic_id": "3ef4829f859b4abcb41f470f350a4154",
+              "synthetic_rank": 1,
+              "context_rank": 3,
+              "synthetic_score": 0.79598135,
+              "preprocessing_chunk_score": 0.7120445
+            },
+            {
+              "text": "Since the construction of its oldest buildings, the university's physical plant has grown substantially. Over the years 29 residence halls have been built to accommodate students and each has been constructed with its own chapel. Many academic building were added together with a system of libraries, the most prominent of which is the Theodore Hesburgh Library, built in 1963 and today containing almost 4 million books. Since 2004, several buildings have been added, including the DeBartolo Performing Arts Center, the Guglielmino Complex, and the Jordan Hall of Science. Additionally, a new residence for men, Duncan Hall, was begun on March 8, 2007, and began accepting residents for the Fall 2008 semester. Ryan Hall was completed and began housing undergraduate women in the fall of 2009. A new engineering building, Stinson-Remick Hall, a new combination Center for Social Concerns/Institute for Church Life building, Geddes Hall, and a law school addition have recently been completed as well. Additionally the new hockey arena opened in the fall of 2011. The Stayer Center for Executive Education, which houses the Mendoza College of Business Executive Education Department opened in March 2013 just South of the Mendoza College of Business building. Because of its long athletic tradition, the university features also many building dedicated to sport. The most famous is Notre Dame Stadium, home of the Fighting Irish football team; it has been renovated several times and today it can hold more than 80 thousand people. Prominent venues include also the Edmund P. Joyce Center, with indoor basketball and volleyball courts, and the Compton Family Ice Arena, a two-rink facility dedicated to hockey. Also, there are many outdoor fields, as the Frank Eck Stadium for baseball.",
+              "chunk_id": "118446438e63e26d436f58d53afb556498ca2038042eaf5d5016bd8b857cda64",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:118446438e63e26d436f58d53afb556498ca2038042eaf5d5016bd8b857cda64",
+              "doc_title": "University_of_Notre_Dame",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 4,
+              "synthetic_id": "3ef4829f859b4abcb41f470f350a4154",
+              "synthetic_rank": 1,
+              "context_rank": 4,
+              "synthetic_score": 0.79598135,
+              "preprocessing_chunk_score": 0.6760701
+            },
+            {
+              "text": "This Main Building, and the library collection, was entirely destroyed by a fire in April 1879, and the school closed immediately and students were sent home. The university founder, Fr. Sorin and the president at the time, the Rev. William Corby, immediately planned for the rebuilding of the structure that had housed virtually the entire University. Construction was started on the 17th of May and by the incredible zeal of administrator and workers the building was completed before the fall semester of 1879. The library collection was also rebuilt and stayed housed in the new Main Building for years afterwards. Around the time of the fire, a music hall was opened. Eventually becoming known as Washington Hall, it hosted plays and musical acts put on by the school. By 1880, a science program was established at the university, and a Science Hall (today LaFortune Student Center) was built in 1883. The hall housed multiple classrooms and science labs needed for early research at the university.",
+              "chunk_id": "156f96fffa531abd2080e085e17760d0ff75ffb5f13fccdc6885e2d9b230770e",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:156f96fffa531abd2080e085e17760d0ff75ffb5f13fccdc6885e2d9b230770e",
+              "doc_title": "University_of_Notre_Dame",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 5,
+              "synthetic_id": "3ef4829f859b4abcb41f470f350a4154",
+              "synthetic_rank": 1,
+              "context_rank": 5,
+              "synthetic_score": 0.79598135,
+              "preprocessing_chunk_score": 0.6667686
+            }
+          ]
+        },
+        {
+          "synthetic_id": "8d175f529a8d45b2b5d7b3b54e6b3432",
+          "synthetic_rank": 2,
+          "synthetic_score": 0.7953563,
+          "reference_question": "What architectural feature on top of the Main Building's gold dome symbolizes the Catholic character of the school?",
+          "reference_answer": "A golden statue of the Virgin Mary",
+          "source_chunk_id": "94a99bff525e95b2237edd771e726b5f77527d60896483ac09fd7385dba4ac0d",
+          "source_doc_title": "University_of_Notre_Dame",
+          "contexts": [
+            {
+              "text": "Architecturally, the school has a Catholic character. Atop the Main Building's gold dome is a golden statue of the Virgin Mary. Immediately in front of the Main Building and facing it, is a copper statue of Christ with arms upraised with the legend \"Venite Ad Me Omnes\". Next to the Main Building is the Basilica of the Sacred Heart. Immediately behind the basilica is the Grotto, a Marian place of prayer and reflection. It is a replica of the grotto at Lourdes, France where the Virgin Mary reputedly appeared to Saint Bernadette Soubirous in 1858. At the end of the main drive (and in a direct line that connects through 3 statues and the Gold Dome), is a simple, modern stone statue of Mary.",
+              "chunk_id": "94a99bff525e95b2237edd771e726b5f77527d60896483ac09fd7385dba4ac0d",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:94a99bff525e95b2237edd771e726b5f77527d60896483ac09fd7385dba4ac0d",
+              "doc_title": "University_of_Notre_Dame",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 6,
+              "synthetic_id": "8d175f529a8d45b2b5d7b3b54e6b3432",
+              "synthetic_rank": 2,
+              "context_rank": 1,
+              "synthetic_score": 0.7953563,
+              "preprocessing_chunk_score": 0.8597313
+            },
+            {
+              "text": "The university is the major seat of the Congregation of Holy Cross (albeit not its official headquarters, which are in Rome). Its main seminary, Moreau Seminary, is located on the campus across St. Joseph lake from the Main Building. Old College, the oldest building on campus and located near the shore of St. Mary lake, houses undergraduate seminarians. Retired priests and brothers reside in Fatima House (a former retreat center), Holy Cross House, as well as Columba Hall near the Grotto. The university through the Moreau Seminary has ties to theologian Frederick Buechner. While not Catholic, Buechner has praised writers from Notre Dame and Moreau Seminary created a Buechner Prize for Preaching.",
+              "chunk_id": "3787a46bd23562af4506bf8b742459ff83347ad4a029818d5d8541f4f9b6e109",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:3787a46bd23562af4506bf8b742459ff83347ad4a029818d5d8541f4f9b6e109",
+              "doc_title": "University_of_Notre_Dame",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 7,
+              "synthetic_id": "8d175f529a8d45b2b5d7b3b54e6b3432",
+              "synthetic_rank": 2,
+              "context_rank": 2,
+              "synthetic_score": 0.7953563,
+              "preprocessing_chunk_score": 0.7061927
+            },
+            {
+              "text": "The library system of the university is divided between the main library and each of the colleges and schools. The main building is the 14-story Theodore M. Hesburgh Library, completed in 1963, which is the third building to house the main collection of books. The front of the library is adorned with the Word of Life mural designed by artist Millard Sheets. This mural is popularly known as \"Touchdown Jesus\" because of its proximity to Notre Dame Stadium and Jesus' arms appearing to make the signal for a touchdown.",
+              "chunk_id": "827dab666a13cddec0287e44ee479902a1d5f4a676cd6a2643a49fc801d34e50",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:827dab666a13cddec0287e44ee479902a1d5f4a676cd6a2643a49fc801d34e50",
+              "doc_title": "University_of_Notre_Dame",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 8,
+              "synthetic_id": "8d175f529a8d45b2b5d7b3b54e6b3432",
+              "synthetic_rank": 2,
+              "context_rank": 3,
+              "synthetic_score": 0.7953563,
+              "preprocessing_chunk_score": 0.7016857
+            },
+            {
+              "text": "The 1916 Zoning Resolution required setbacks in new buildings, and restricted towers to a percentage of the lot size, to allow sunlight to reach the streets below. The Art Deco style of the Chrysler Building (1930) and Empire State Building (1931), with their tapered tops and steel spires, reflected the zoning requirements. The buildings have distinctive ornamentation, such as the eagles at the corners of the 61st floor on the Chrysler Building, and are considered some of the finest examples of the Art Deco style. A highly influential example of the international style in the United States is the Seagram Building (1957), distinctive for its façade using visible bronze-toned I-beams to evoke the building's structure. The Condé Nast Building (2000) is a prominent example of green design in American skyscrapers and has received an award from the American Institute of Architects as well as AIA New York State for its design.",
+              "chunk_id": "efa5fe064929d71241f00dd27e216f90e41df71d85587279f07ab0dd744efa50",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:efa5fe064929d71241f00dd27e216f90e41df71d85587279f07ab0dd744efa50",
+              "doc_title": "New_York_City",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 9,
+              "synthetic_id": "8d175f529a8d45b2b5d7b3b54e6b3432",
+              "synthetic_rank": 2,
+              "context_rank": 4,
+              "synthetic_score": 0.7953563,
+              "preprocessing_chunk_score": 0.69731283
+            },
+            {
+              "text": "A solar chimney (or thermal chimney, in this context) is a passive solar ventilation system composed of a vertical shaft connecting the interior and exterior of a building. As the chimney warms, the air inside is heated causing an updraft that pulls air through the building. Performance can be improved by using glazing and thermal mass materials in a way that mimics greenhouses.",
+              "chunk_id": "b4ceb04abf6f78442591901ce776950c296785f05c8c68967bd2511246d84ad7",
+              "scoped_chunk_id": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada:b4ceb04abf6f78442591901ce776950c296785f05c8c68967bd2511246d84ad7",
+              "doc_title": "Solar_energy",
+              "doc_hash": "f553b4c9c6bed0b712a26d7a6820fa8e4715d3f1b5f415ae2196f0a7d2eedada",
+              "prompt_position": 10,
+              "synthetic_id": "8d175f529a8d45b2b5d7b3b54e6b3432",
+              "synthetic_rank": 2,
+              "context_rank": 5,
+              "synthetic_score": 0.7953563,
+              "preprocessing_chunk_score": 0.6846427
+            }
+          ]
+        }
+      ]
+    },
+    "isError": false
+  }
+}
