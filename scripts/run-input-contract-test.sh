@@ -49,7 +49,15 @@ if [[ "${SKIP_PREFLIGHT:-0}" != "1" ]]; then
   curl --fail --silent --show-error "$COMPONENT_HEALTH_URL" >/dev/null
 fi
 
-cmd=(uv run pytest -s tests/test_rag_tool_input_contract.py)
+cmd=(
+  uv run
+  --project "$ORIG_ROOT"
+  --frozen
+  --no-default-groups
+  --group test
+  python -m pytest
+  -s tests/test_rag_tool_input_contract.py
+)
 cmd+=("$@")
 
 log "Running against $BASE_SERVER_URL: ${cmd[*]}"
