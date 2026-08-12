@@ -46,20 +46,6 @@ def test_render_demo_response_prints_answer_contexts_and_demonstrations():
         {
             "status": "ok",
             "answer": "The answer.",
-            "retrieved_contexts": [
-                {
-                    "text": "Context text with enough detail to show truncation behavior.",
-                    "chunk_id": "chunk-1",
-                    "scoped_chunk_id": "doc:chunk-1",
-                    "doc_title": "Doc",
-                    "doc_hash": "hash",
-                    "prompt_position": 1,
-                    "synthetic_id": "syn-1",
-                    "synthetic_rank": 1,
-                    "context_rank": 1,
-                    "synthetic_score": 0.9,
-                }
-            ],
             "demonstrations": [
                 {
                     "synthetic_id": "syn-1",
@@ -69,7 +55,20 @@ def test_render_demo_response_prints_answer_contexts_and_demonstrations():
                     "reference_answer": "Reference answer.",
                     "source_chunk_id": "chunk-1",
                     "source_doc_title": "Doc",
-                    "contexts": [],
+                    "contexts": [
+                        {
+                            "text": "Context text with enough detail to show truncation behavior.",
+                            "chunk_id": "chunk-1",
+                            "scoped_chunk_id": "doc:chunk-1",
+                            "doc_title": "Doc",
+                            "doc_hash": "hash",
+                            "prompt_position": 1,
+                            "synthetic_id": "syn-1",
+                            "synthetic_rank": 1,
+                            "context_rank": 1,
+                            "synthetic_score": 0.9,
+                        }
+                    ],
                 }
             ],
         }

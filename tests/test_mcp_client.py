@@ -37,26 +37,35 @@ def make_sample(index: int) -> DatasetSample:
 
 
 def ok_payload(answer: str = "Answer") -> dict[str, Any]:
+    context = {
+        "text": "Context",
+        "chunk_id": "chunk-1",
+        "scoped_chunk_id": "doc:chunk-1",
+        "doc_title": "Doc",
+        "doc_hash": "hash",
+        "prompt_position": 0,
+        "synthetic_id": "syn-1",
+        "synthetic_rank": 0,
+        "context_rank": 0,
+        "synthetic_score": 0.9,
+        "preprocessing_chunk_score": None,
+    }
     return {
         "status": "ok",
         "answer": answer,
         "error": None,
-        "retrieved_contexts": [
+        "demonstrations": [
             {
-                "text": "Context",
-                "chunk_id": "chunk-1",
-                "scoped_chunk_id": "doc:chunk-1",
-                "doc_title": "Doc",
-                "doc_hash": "hash",
-                "prompt_position": 0,
                 "synthetic_id": "syn-1",
                 "synthetic_rank": 0,
-                "context_rank": 0,
                 "synthetic_score": 0.9,
-                "preprocessing_chunk_score": None,
+                "reference_question": "Reference question?",
+                "reference_answer": "Reference answer.",
+                "source_chunk_id": "chunk-1",
+                "source_doc_title": "Doc",
+                "contexts": [context],
             }
         ],
-        "demonstrations": [],
     }
 
 
@@ -124,6 +133,37 @@ def test_parser_accepts_structured_content_envelope() -> None:
     assert parsed.status == "ok"
     assert parsed.answer == "Answer"
     assert parsed.retrieved_contexts[0].chunk_id == "chunk-1"
+    assert "retrieved_contexts" not in parsed.model_dump(mode="json")
+
+
+def test_parser_derives_retrieved_contexts_in_prompt_order() -> None:
+    payload = ok_payload()
+    first_context = dict(payload["demonstrations"][0]["contexts"][0])
+    second_context = {
+        **first_context,
+        "text": "Second context",
+        "chunk_id": "chunk-2",
+        "scoped_chunk_id": "doc:chunk-2",
+        "prompt_position": 2,
+        "context_rank": 2,
+    }
+    first_context["prompt_position"] = 1
+    payload["demonstrations"][0]["contexts"] = [second_context, first_context]
+
+    parsed = parse_rag_asap_response({"structuredContent": payload}, contexts_requested=True)
+
+    assert [context.chunk_id for context in parsed.retrieved_contexts] == [
+        "chunk-1",
+        "chunk-2",
+    ]
+
+
+def test_parser_rejects_legacy_top_level_retrieved_contexts() -> None:
+    payload = ok_payload()
+    payload["retrieved_contexts"] = payload["demonstrations"][0]["contexts"]
+
+    with pytest.raises(MalformedMcpResponse, match="RagAsapResponse schema"):
+        parse_rag_asap_response({"structuredContent": payload}, contexts_requested=True)
 
 
 def test_parser_unwraps_fastmcp_result_envelope() -> None:
@@ -224,6 +264,8 @@ async def test_fake_mcp_success_structured_error_and_malformed(tmp_path: Path) -
     assert all("user_query" in call for call in client.calls)
     assert all("question" not in call for call in client.calls)
     assert records[0].answer == "A1"
+    assert records[0].retrieved_contexts[0].chunk_id == "chunk-1"
+    assert "retrieved_contexts" not in records[0].model_dump(mode="json")
     assert records[1].error == "component failed"
     assert records[2].error and "plain string" in records[2].error
 
@@ -285,7 +327,6 @@ async def test_resume_skips_completed_without_duplicate_jsonl(tmp_path: Path) ->
         "status": "ok",
         "answer": "already done",
         "error": None,
-        "retrieved_contexts": [],
         "demonstrations": [],
         "latency_seconds": 0.1,
         "attempts": 1,
@@ -318,7 +359,6 @@ async def test_partially_written_run_resumes_without_duplicating_jsonl(tmp_path:
         "status": "ok",
         "answer": "already done",
         "error": None,
-        "retrieved_contexts": [],
         "demonstrations": [],
         "latency_seconds": 0.1,
         "attempts": 1,

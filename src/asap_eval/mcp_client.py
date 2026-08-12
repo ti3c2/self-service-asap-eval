@@ -239,7 +239,6 @@ def _record_from_response(
         status=status,
         answer=response.answer,
         error=response.error,
-        retrieved_contexts=response.retrieved_contexts,
         demonstrations=response.demonstrations,
         latency_seconds=latency_seconds,
         attempts=attempts,

@@ -77,12 +77,30 @@ class RetrievedDemonstration(FlexibleBaseModel):
     contexts: list[RetrievedContext] = Field(default_factory=list)
 
 
-class RagAsapResponse(FlexibleBaseModel):
+def retrieved_contexts_from_demonstrations(
+    demonstrations: list[RetrievedDemonstration],
+) -> list[RetrievedContext]:
+    contexts = [
+        context for demonstration in demonstrations for context in demonstration.contexts
+    ]
+    return contexts_in_prompt_order(contexts)
+
+
+def contexts_in_prompt_order(contexts: list[RetrievedContext]) -> list[RetrievedContext]:
+    if contexts and all(context.prompt_position > 0 for context in contexts):
+        return sorted(contexts, key=lambda context: context.prompt_position)
+    return contexts
+
+
+class RagAsapResponse(StrictBaseModel):
     status: Literal["ok", "warning", "error"]
     answer: str | None = None
     error: str | None = None
-    retrieved_contexts: list[RetrievedContext] = Field(default_factory=list)
     demonstrations: list[RetrievedDemonstration] = Field(default_factory=list)
+
+    @property
+    def retrieved_contexts(self) -> list[RetrievedContext]:
+        return retrieved_contexts_from_demonstrations(self.demonstrations)
 
     @field_validator("answer")
     @classmethod
@@ -107,11 +125,14 @@ class InferenceRecord(StrictBaseModel):
     status: InferenceStatus
     answer: str | None = None
     error: str | None = None
-    retrieved_contexts: list[RetrievedContext] = Field(default_factory=list)
     demonstrations: list[RetrievedDemonstration] = Field(default_factory=list)
     latency_seconds: float
     attempts: int = Field(ge=1)
     collected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @property
+    def retrieved_contexts(self) -> list[RetrievedContext]:
+        return retrieved_contexts_from_demonstrations(self.demonstrations)
 
 
 class PreflightResult(StrictBaseModel):

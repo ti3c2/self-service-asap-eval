@@ -11,6 +11,7 @@ from asap_eval.models import (
     InferenceRecord,
     InferenceStatus,
     RetrievedContext,
+    RetrievedDemonstration,
     SourceReference,
 )
 from asap_eval.ragas_runner import PreparedRagasSample, RagasRunResult
@@ -39,10 +40,19 @@ def make_record(
         status=status,
         answer="Answer" if status == InferenceStatus.OK else None,
         error=None if status == InferenceStatus.OK else "failed",
-        retrieved_contexts=contexts or [],
-        demonstrations=[],
+        demonstrations=[demonstration(contexts)] if contexts else [],
         latency_seconds=0.1,
         attempts=1,
+    )
+
+
+def demonstration(contexts: list[RetrievedContext]) -> RetrievedDemonstration:
+    return RetrievedDemonstration(
+        synthetic_id="syn",
+        synthetic_rank=1,
+        reference_question="Synthetic question?",
+        reference_answer="Synthetic answer.",
+        contexts=contexts,
     )
 
 
