@@ -31,6 +31,9 @@ class McpPreflightError(RuntimeError):
     pass
 
 
+_MISSING = object()
+
+
 class ManagedMcpClient(Protocol):
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any: ...
 
@@ -51,10 +54,9 @@ DEFAULT_TOOL_CALL_SHAPE = ToolCallShape()
 def parse_rag_asap_response(payload: Any, *, contexts_requested: bool = True) -> RagAsapResponse:
     """Parse the structured response Agent B exposes through FastMCP.
 
-    The parser accepts Pydantic model instances and plain dictionaries. It unwraps common MCP
-    result envelopes (`data`, `structuredContent`, `result`) but rejects a plain string
-    whenever the collector requested contexts, because judging an error/string fallback as an
-    answer would corrupt the benchmark.
+    The parser reads structured MCP output (`structuredContent` / `structured_content`)
+    and ignores text content when contexts were requested, because judging an
+    error/string fallback as an answer would corrupt the benchmark.
     """
 
     candidate = _unwrap_mcp_payload(payload)
@@ -273,24 +275,33 @@ def _tool_arguments(sample: DatasetSample, call_shape: ToolCallShape) -> dict[st
 def _unwrap_mcp_payload(payload: Any) -> Any:
     candidate = payload
     for _ in range(3):
-        if isinstance(candidate, BaseModel):
-            return candidate
-        if hasattr(candidate, "data"):
-            candidate = candidate.data
+        structured = _structured_payload(candidate)
+        if structured is not _MISSING:
+            candidate = structured
             continue
         if isinstance(candidate, dict):
-            for key in ("data", "structuredContent", "structured_content"):
-                if key in candidate:
-                    candidate = candidate[key]
-                    break
-            else:
-                if set(candidate) == {"result"}:
-                    candidate = candidate["result"]
-                    continue
-                return candidate
-            continue
+            if set(candidate) == {"result"}:
+                candidate = candidate["result"]
+                continue
+            return candidate
+        if isinstance(candidate, BaseModel):
+            return candidate
         return candidate
     return candidate
+
+
+def _structured_payload(payload: Any) -> Any:
+    if isinstance(payload, dict):
+        for key in ("structuredContent", "structured_content"):
+            if key in payload and payload[key] is not None:
+                return payload[key]
+        return _MISSING
+
+    for attr in ("structuredContent", "structured_content"):
+        value = getattr(payload, attr, _MISSING)
+        if value is not _MISSING and value is not None:
+            return value
+    return _MISSING
 
 
 def _find_tool(tools: Any, tool_name: str) -> Any | None:
