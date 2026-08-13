@@ -1,4 +1,3 @@
-dataset_path = "./data/squad_selected_full_ru.csv"
 output_dir = "results"
 mcp_url = "http://localhost:8100/mcp/"
 tool_name = "RAG_ASAP"

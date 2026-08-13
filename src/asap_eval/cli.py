@@ -95,13 +95,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def command_audit(args: argparse.Namespace) -> None:
     config = _load_config(args)
-    audit, _samples = load_dataset(config.dataset_path)
+    audit, _samples = load_dataset(_require_dataset_path(config))
     print(json.dumps(audit.model_dump(mode="json"), ensure_ascii=False, indent=2, sort_keys=True))
 
 
 async def command_collect(args: argparse.Namespace) -> Path:
     config = _load_config(args)
-    audit, samples = load_dataset(config.dataset_path)
+    audit, samples = load_dataset(_require_dataset_path(config))
     samples = _select_samples(samples, args.max_samples)
     output_dir = args.output_dir or config.output_dir
     run_dir = create_run_dir(output_dir, audit.dataset_sha256)
@@ -221,7 +221,7 @@ async def command_demo(args: argparse.Namespace) -> None:
 
 
 def evaluate_run_dir(config: EvalConfig, run_dir: Path) -> dict[str, Any]:
-    audit, _samples = load_dataset(config.dataset_path)
+    audit, _samples = load_dataset(_require_dataset_path(config))
     records = read_jsonl(run_dir / "inference_samples.jsonl", InferenceRecord)
     started = datetime.now(timezone.utc)
     ragas_result = run_ragas_evaluation(records, config)
@@ -397,3 +397,9 @@ def _load_config(args: argparse.Namespace) -> EvalConfig:
     if dataset_path is not None:
         config = config.model_copy(update={"dataset_path": dataset_path})
     return config
+
+
+def _require_dataset_path(config: EvalConfig) -> Path:
+    if config.dataset_path is None:
+        raise ValueError("dataset_path must be set in config.toml or passed with --dataset-path.")
+    return config.dataset_path

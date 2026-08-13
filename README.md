@@ -56,8 +56,9 @@ cp config.example.toml config.toml
 cp .env.example .env
 ```
 
-`config.toml` задаёт путь к датасету, MCP URL, concurrency для вызовов компонента и настройки
-RAGAS. По умолчанию eval ждёт компонент на:
+`config.toml` задаёт MCP URL, concurrency для вызовов компонента и настройки RAGAS.
+Путь к датасету можно указать в `config.toml` как `dataset_path`, передать через
+`--dataset-path` или через переменную `DATASET_PATH`. По умолчанию eval ждёт компонент на:
 
 ```text
 http://localhost:8100/mcp/
@@ -182,13 +183,13 @@ docker compose -f compose.common.yaml logs -f base_rag_tool_asap
 Полный baseline по всем вопросам:
 
 ```bash
-./scripts/run-evaluation.sh
+./scripts/run-evaluation.sh --dataset-path data/squad_selected_full_ru.csv
 ```
 
 Это эквивалентно:
 
 ```bash
-uv run asap-eval run --config config.toml --max-samples 0
+uv run asap-eval run --config config.toml --dataset-path data/squad_selected_full_ru.csv --max-samples 0
 ```
 
 `--max-samples 0` и любые значения меньше нуля означают “обработать весь датасет”.
@@ -197,10 +198,10 @@ uv run asap-eval run --config config.toml --max-samples 0
 Smoke-run на 5 вопросах:
 
 ```bash
-./scripts/run-evaluation.sh --max-samples 5
+./scripts/run-evaluation.sh --dataset-path data/squad_selected_full_ru.csv --max-samples 5
 ```
 
-Запуск с другим CSV-датасетом без изменения `config.toml`:
+Запуск с другим CSV-датасетом:
 
 ```bash
 ./scripts/run-evaluation.sh --dataset-path data/squad_selected_full_en.csv

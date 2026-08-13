@@ -10,6 +10,9 @@ Run collection and RAGAS evaluation from self-service-asap-eval.
 Default command:
   uv run asap-eval run --config config.toml --max-samples 0
 
+Dataset path:
+  Set dataset_path in config.toml, pass --dataset-path, or set DATASET_PATH.
+
 Environment overrides:
   EVAL_CONFIG       Config path, default: config.toml
   DATASET_PATH      Dataset CSV path. Passed as --dataset-path when set.

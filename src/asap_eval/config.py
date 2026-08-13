@@ -58,7 +58,7 @@ class JudgeEnvironment(SafeBaseModel):
 
 
 class EvalConfig(SafeBaseModel):
-    dataset_path: Path
+    dataset_path: Path | None = None
     output_dir: Path = Path("results")
     mcp_url: str = "http://localhost:8100/mcp/"
     tool_name: str = "RAG_ASAP"
