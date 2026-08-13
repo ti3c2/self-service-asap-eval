@@ -7,3 +7,4 @@ results/
 .env
 .ssh
 logs/
+config.toml
