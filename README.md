@@ -130,8 +130,21 @@ VLLM_USE_FLASHINFER_SAMPLER=1 ./scripts/launch-test-models.sh
 
 Логи пишутся в `logs/vllm/`. Скрипт ждёт готовности каждого OpenAI-compatible endpoint через
 `/v1/models` и печатает `All model servers are ready.` только после успешной проверки всех трёх
-серверов. Если процесс падает при старте или endpoint не поднимается за timeout, скрипт выводит
-последние строки соответствующего log-файла и завершает работу.
+серверов. После этого launcher записывает PID-файл, печатает команду остановки и выходит, а
+модели продолжают работать в фоне. Остановить их можно напечатанной командой или явно:
+
+```bash
+./scripts/launch-test-models.sh --stop
+```
+
+Если нужен старый attached-режим, в котором `Ctrl-C` останавливает все модели:
+
+```bash
+./scripts/launch-test-models.sh --foreground
+```
+
+Если процесс падает при старте или endpoint не поднимается за timeout, скрипт выводит последние
+строки соответствующего log-файла и завершает работу.
 
 Основные overrides:
 
@@ -143,8 +156,8 @@ EMB_CUDA_VISIBLE_DEVICES=2 \
 ```
 
 Также можно переопределить `LARGE_LM_MODEL`, `LARGE_LM_PORT`, `SMALL_LM_MODEL`,
-`SMALL_LM_PORT`, `EMB_EMBEDDINGS_MODEL`, `EMB_PORT`, `TEST_MODEL_READY_TIMEOUT`
-и `TEST_MODEL_LOG_DIR`. Полный список:
+`SMALL_LM_PORT`, `EMB_EMBEDDINGS_MODEL`, `EMB_PORT`, `TEST_MODEL_READY_TIMEOUT`,
+`TEST_MODEL_LOG_DIR` и `TEST_MODEL_STATE_FILE`. Полный список:
 
 ```bash
 ./scripts/launch-test-models.sh --help
