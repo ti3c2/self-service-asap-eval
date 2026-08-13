@@ -16,7 +16,7 @@ Environment overrides:
   VLLM_BIN                    vLLM executable override, default: uv run --no-sync vllm.
   VLLM_USE_FLASHINFER_SAMPLER FlashInfer sampler toggle, default: 0.
   TEST_MODEL_LOG_DIR          Log directory, default: logs/vllm.
-  TEST_MODEL_READY_TIMEOUT    Seconds to wait for each server, default: 900.
+  TEST_MODEL_READY_TIMEOUT    Seconds to wait for each server, default: 3600.
   TEST_MODEL_READY_INTERVAL   Seconds between readiness checks, default: 5.
   TEST_MODEL_CURL_TIMEOUT     Seconds per readiness request, default: 5.
 
@@ -64,7 +64,7 @@ fi
 
 TEST_MODEL_LOG_DIR="${TEST_MODEL_LOG_DIR:-logs/vllm}"
 VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}"
-TEST_MODEL_READY_TIMEOUT="${TEST_MODEL_READY_TIMEOUT:-1200}"
+TEST_MODEL_READY_TIMEOUT="${TEST_MODEL_READY_TIMEOUT:-3600}"
 TEST_MODEL_READY_INTERVAL="${TEST_MODEL_READY_INTERVAL:-5}"
 TEST_MODEL_CURL_TIMEOUT="${TEST_MODEL_CURL_TIMEOUT:-5}"
 
