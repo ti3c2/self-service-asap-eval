@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from mcp.types import CallToolResult, TextContent
 
 from asap_eval.artifacts import read_jsonl, write_jsonl_atomic
 from asap_eval.config import InferenceConfig
@@ -35,27 +37,44 @@ def make_sample(index: int) -> DatasetSample:
 
 
 def ok_payload(answer: str = "Answer") -> dict[str, Any]:
+    context = {
+        "text": "Context",
+        "chunk_id": "chunk-1",
+        "scoped_chunk_id": "doc:chunk-1",
+        "doc_title": "Doc",
+        "doc_hash": "hash",
+        "prompt_position": 0,
+        "synthetic_id": "syn-1",
+        "synthetic_rank": 0,
+        "context_rank": 0,
+        "synthetic_score": 0.9,
+        "preprocessing_chunk_score": None,
+    }
     return {
         "status": "ok",
         "answer": answer,
         "error": None,
-        "retrieved_contexts": [
+        "demonstrations": [
             {
-                "text": "Context",
-                "chunk_id": "chunk-1",
-                "scoped_chunk_id": "doc:chunk-1",
-                "doc_title": "Doc",
-                "doc_hash": "hash",
-                "prompt_position": 0,
                 "synthetic_id": "syn-1",
                 "synthetic_rank": 0,
-                "context_rank": 0,
                 "synthetic_score": 0.9,
-                "preprocessing_chunk_score": None,
+                "reference_question": "Reference question?",
+                "reference_answer": "Reference answer.",
+                "source_chunk_id": "chunk-1",
+                "source_doc_title": "Doc",
+                "contexts": [context],
             }
         ],
-        "demonstrations": [],
     }
+
+
+def structured_tool_result(payload: dict[str, Any]) -> SimpleNamespace:
+    return SimpleNamespace(
+        content=[TextContent(type="text", text=payload.get("answer") or payload.get("error") or "")],
+        data=None,
+        structured_content=payload,
+    )
 
 
 class FakeClient:
@@ -109,11 +128,42 @@ class FakeClient:
         ]
 
 
-def test_parser_accepts_dict_and_pydantic_like_envelopes() -> None:
-    parsed = parse_rag_asap_response({"data": ok_payload()}, contexts_requested=True)
+def test_parser_accepts_structured_content_envelope() -> None:
+    parsed = parse_rag_asap_response({"structuredContent": ok_payload()}, contexts_requested=True)
     assert parsed.status == "ok"
     assert parsed.answer == "Answer"
     assert parsed.retrieved_contexts[0].chunk_id == "chunk-1"
+    assert "retrieved_contexts" not in parsed.model_dump(mode="json")
+
+
+def test_parser_derives_retrieved_contexts_in_prompt_order() -> None:
+    payload = ok_payload()
+    first_context = dict(payload["demonstrations"][0]["contexts"][0])
+    second_context = {
+        **first_context,
+        "text": "Second context",
+        "chunk_id": "chunk-2",
+        "scoped_chunk_id": "doc:chunk-2",
+        "prompt_position": 2,
+        "context_rank": 2,
+    }
+    first_context["prompt_position"] = 1
+    payload["demonstrations"][0]["contexts"] = [second_context, first_context]
+
+    parsed = parse_rag_asap_response({"structuredContent": payload}, contexts_requested=True)
+
+    assert [context.chunk_id for context in parsed.retrieved_contexts] == [
+        "chunk-1",
+        "chunk-2",
+    ]
+
+
+def test_parser_rejects_legacy_top_level_retrieved_contexts() -> None:
+    payload = ok_payload()
+    payload["retrieved_contexts"] = payload["demonstrations"][0]["contexts"]
+
+    with pytest.raises(MalformedMcpResponse, match="RagAsapResponse schema"):
+        parse_rag_asap_response({"structuredContent": payload}, contexts_requested=True)
 
 
 def test_parser_unwraps_fastmcp_result_envelope() -> None:
@@ -123,6 +173,57 @@ def test_parser_unwraps_fastmcp_result_envelope() -> None:
     )
     assert parsed.status == "ok"
     assert parsed.answer == "Wrapped"
+
+
+def test_parser_prefers_structured_content_over_text() -> None:
+    parsed = parse_rag_asap_response(
+        SimpleNamespace(
+            content=[TextContent(type="text", text="Short text answer")],
+            data=None,
+            structured_content=ok_payload("Structured answer"),
+        ),
+        contexts_requested=True,
+    )
+
+    assert parsed.answer == "Structured answer"
+    assert parsed.retrieved_contexts[0].text == "Context"
+
+
+def test_parser_rejects_data_without_structured_content() -> None:
+    with pytest.raises(MalformedMcpResponse, match="RagAsapResponse schema"):
+        parse_rag_asap_response(
+            SimpleNamespace(
+                content=[TextContent(type="text", text="Short text answer")],
+                data=ok_payload("Data answer"),
+                structured_content=None,
+            ),
+            contexts_requested=True,
+        )
+
+
+def test_parser_accepts_raw_mcp_structured_content() -> None:
+    parsed = parse_rag_asap_response(
+        CallToolResult(
+            content=[TextContent(type="text", text="Short text answer")],
+            structuredContent=ok_payload("Raw structured answer"),
+        ),
+        contexts_requested=True,
+    )
+
+    assert parsed.answer == "Raw structured answer"
+    assert parsed.retrieved_contexts[0].chunk_id == "chunk-1"
+
+
+def test_parser_does_not_use_content_text_for_context_metrics() -> None:
+    with pytest.raises(MalformedMcpResponse, match="RagAsapResponse schema"):
+        parse_rag_asap_response(
+            SimpleNamespace(
+                content=[TextContent(type="text", text=json.dumps(ok_payload()))],
+                data=None,
+                structured_content=None,
+            ),
+            contexts_requested=True,
+        )
 
 
 def test_parser_rejects_plain_string_when_contexts_requested() -> None:
@@ -142,8 +243,8 @@ async def test_preflight_checks_tool_and_return_contexts() -> None:
 async def test_fake_mcp_success_structured_error_and_malformed(tmp_path: Path) -> None:
     client = FakeClient(
         [
-            ok_payload("A1"),
-            {"status": "error", "answer": None, "error": "component failed"},
+            structured_tool_result(ok_payload("A1")),
+            structured_tool_result({"status": "error", "answer": None, "error": "component failed"}),
             "plain string",
         ]
     )
@@ -163,13 +264,15 @@ async def test_fake_mcp_success_structured_error_and_malformed(tmp_path: Path) -
     assert all("user_query" in call for call in client.calls)
     assert all("question" not in call for call in client.calls)
     assert records[0].answer == "A1"
+    assert records[0].retrieved_contexts[0].chunk_id == "chunk-1"
+    assert "retrieved_contexts" not in records[0].model_dump(mode="json")
     assert records[1].error == "component failed"
     assert records[2].error and "plain string" in records[2].error
 
 
 @pytest.mark.asyncio
 async def test_timeout_retry_and_concurrency_limit(tmp_path: Path) -> None:
-    retry_client = FakeClient([RuntimeError("temporary"), ok_payload("retried")])
+    retry_client = FakeClient([RuntimeError("temporary"), structured_tool_result(ok_payload("retried"))])
     retry_records = await collect_samples(
         [make_sample(1)],
         client_factory=lambda: retry_client,
@@ -187,7 +290,7 @@ async def test_timeout_retry_and_concurrency_limit(tmp_path: Path) -> None:
     assert retry_records[0].status == InferenceStatus.OK
     assert retry_records[0].attempts == 2
 
-    timeout_client = FakeClient([ok_payload()], delay=0.05)
+    timeout_client = FakeClient([structured_tool_result(ok_payload())], delay=0.05)
     timeout_records = await collect_samples(
         [make_sample(2)],
         client_factory=lambda: timeout_client,
@@ -199,7 +302,9 @@ async def test_timeout_retry_and_concurrency_limit(tmp_path: Path) -> None:
     assert timeout_records[0].status == InferenceStatus.TIMEOUT
     assert timeout_records[0].attempts == 2
 
-    slow_client = FakeClient([ok_payload(str(i)) for i in range(5)], delay=0.01)
+    slow_client = FakeClient(
+        [structured_tool_result(ok_payload(str(i))) for i in range(5)], delay=0.01
+    )
     concurrency_records = await collect_samples(
         [make_sample(i) for i in range(5)],
         client_factory=lambda: slow_client,
@@ -222,7 +327,6 @@ async def test_resume_skips_completed_without_duplicate_jsonl(tmp_path: Path) ->
         "status": "ok",
         "answer": "already done",
         "error": None,
-        "retrieved_contexts": [],
         "demonstrations": [],
         "latency_seconds": 0.1,
         "attempts": 1,
@@ -230,7 +334,7 @@ async def test_resume_skips_completed_without_duplicate_jsonl(tmp_path: Path) ->
     }
     write_jsonl_atomic(checkpoint, [existing])
 
-    client = FakeClient([ok_payload("new")])
+    client = FakeClient([structured_tool_result(ok_payload("new"))])
     records = await collect_samples(
         [first, make_sample(2)],
         client_factory=lambda: client,
@@ -255,7 +359,6 @@ async def test_partially_written_run_resumes_without_duplicating_jsonl(tmp_path:
         "status": "ok",
         "answer": "already done",
         "error": None,
-        "retrieved_contexts": [],
         "demonstrations": [],
         "latency_seconds": 0.1,
         "attempts": 1,
@@ -266,7 +369,7 @@ async def test_partially_written_run_resumes_without_duplicating_jsonl(tmp_path:
         encoding="utf-8",
     )
 
-    client = FakeClient([ok_payload("new")])
+    client = FakeClient([structured_tool_result(ok_payload("new"))])
     records = await collect_samples(
         [first, make_sample(2)],
         client_factory=lambda: client,

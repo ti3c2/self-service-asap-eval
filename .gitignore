@@ -6,3 +6,5 @@ __pycache__/
 results/
 .env
 .ssh
+logs/
+config.toml

@@ -10,8 +10,12 @@ Run collection and RAGAS evaluation from self-service-asap-eval.
 Default command:
   uv run asap-eval run --config config.toml --max-samples 0
 
+Dataset path:
+  Set dataset_path in config.toml, pass --dataset-path, or set DATASET_PATH.
+
 Environment overrides:
   EVAL_CONFIG       Config path, default: config.toml
+  DATASET_PATH      Dataset CSV path. Passed as --dataset-path when set.
   MAX_SAMPLES       Sample limit, default: 0. Values <= 0 mean full dataset.
   SKIP_UV_SYNC      Set to 1 to skip "uv sync --frozen".
   SKIP_PREFLIGHT    Set to 1 to skip http://localhost:8100/ping check.
@@ -44,6 +48,7 @@ EVAL_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$EVAL_ROOT"
 
 EVAL_CONFIG="${EVAL_CONFIG:-config.toml}"
+DATASET_PATH="${DATASET_PATH:-}"
 MAX_SAMPLES="${MAX_SAMPLES-0}"
 COMPONENT_HEALTH_URL="${COMPONENT_HEALTH_URL:-http://localhost:8100/ping}"
 
@@ -67,7 +72,7 @@ if [[ "${SKIP_PREFLIGHT:-0}" != "1" ]]; then
   curl --fail --silent --show-error "$COMPONENT_HEALTH_URL" >/dev/null
 fi
 
-if [[ "${SKIP_UV_SYNC:-0}" != "1" ]]; then
+if [[ "${SKIP_UV_SYNC:-1}" != "1" ]]; then
   log "Syncing eval dependencies."
   uv sync --frozen
 fi
@@ -75,6 +80,9 @@ fi
 cmd=(uv run asap-eval run)
 if ! has_arg "--config" "$@"; then
   cmd+=(--config "$EVAL_CONFIG")
+fi
+if [[ -n "$DATASET_PATH" ]] && ! has_arg "--dataset-path" "$@"; then
+  cmd+=(--dataset-path "$DATASET_PATH")
 fi
 if [[ -n "$MAX_SAMPLES" && "$MAX_SAMPLES" != "all" ]] && ! has_arg "--max-samples" "$@"; then
   cmd+=(--max-samples "$MAX_SAMPLES")

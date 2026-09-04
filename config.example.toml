@@ -1,20 +1,18 @@
-dataset_path = "../self-service-orig/services/components/rag_tool_asap/tests/files/asap.csv"
 output_dir = "results"
 mcp_url = "http://localhost:8100/mcp/"
 tool_name = "RAG_ASAP"
 
 [inference]
-max_concurrency = 8
+max_concurrency = 64
 timeout_seconds = 120
 max_retries = 3
 initial_backoff_seconds = 0.25
 max_backoff_seconds = 5
 
 [ragas]
-max_workers = 8
-timeout_seconds = 180
+max_workers = 64
+timeout_seconds = 1200
 max_retries = 3
-max_wait_seconds = 60
+max_wait_seconds = 300
 seed = 42
-batch_size = 32
 raise_exceptions = false

@@ -6,7 +6,13 @@ from typing import Any
 
 from asap_eval.config import EvalConfig, RagasConfig
 from asap_eval.metrics import RAGAS_METRIC_NAMES, build_ragas_metrics
-from asap_eval.models import InferenceRecord, InferenceStatus, SourceReference
+from asap_eval.models import (
+    InferenceRecord,
+    InferenceStatus,
+    RetrievedContext,
+    RetrievedDemonstration,
+    SourceReference,
+)
 from asap_eval.ragas_runner import prepare_ragas_samples, run_ragas_evaluation
 
 
@@ -16,6 +22,7 @@ def make_record(
     query_text: str = "Question?",
     answer: str | None = "Answer",
     status: InferenceStatus = InferenceStatus.OK,
+    contexts: list[RetrievedContext] | None = None,
 ) -> InferenceRecord:
     return InferenceRecord(
         sample_id=sample_id,
@@ -31,10 +38,33 @@ def make_record(
         ),
         status=status,
         answer=answer,
-        retrieved_contexts=[],
-        demonstrations=[],
+        demonstrations=[demonstration(contexts)] if contexts else [],
         latency_seconds=0.1,
         attempts=1,
+    )
+
+
+def demonstration(contexts: list[RetrievedContext]) -> RetrievedDemonstration:
+    return RetrievedDemonstration(
+        synthetic_id="syn",
+        synthetic_rank=1,
+        reference_question="Synthetic question?",
+        reference_answer="Synthetic answer.",
+        contexts=contexts,
+    )
+
+
+def context(text: str, position: int) -> RetrievedContext:
+    return RetrievedContext(
+        text=text,
+        chunk_id=f"chunk-{position}",
+        scoped_chunk_id=f"hash:chunk-{position}",
+        doc_title="Doc",
+        doc_hash="hash",
+        prompt_position=position,
+        synthetic_id="syn",
+        synthetic_rank=1,
+        context_rank=position,
     )
 
 
@@ -51,11 +81,13 @@ def test_five_metric_classes_and_names_match_ragas_032() -> None:
 
 
 def test_prepare_ragas_samples_maps_all_requested_fields() -> None:
-    record = make_record("sample-1")
-    record.retrieved_contexts = [
-        SimpleNamespace(text="Retrieved A"),
-        SimpleNamespace(text="Retrieved B"),
-    ]
+    record = make_record(
+        "sample-1",
+        contexts=[
+            context("Retrieved A", 1),
+            context("Retrieved B", 2),
+        ],
+    )
 
     prepared = prepare_ragas_samples([record])
 

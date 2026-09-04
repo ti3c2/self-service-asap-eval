@@ -1,7 +1,7 @@
 # Среда для тестирования `rag_tool_asap`
 
 Этот репозиторий — полный набор скриптов и кода для проверки компонента
-`rag_tool_asap` из соседнего `self-service-orig`.
+`rag_tool_asap` из соседнего `self-service-asap`.
 
 Evaluation pipeline делает три вещи:
 
@@ -14,13 +14,13 @@ Evaluation pipeline делает три вещи:
 Компонент живёт здесь:
 
 ```text
-../self-service-orig/services/components/rag_tool_asap
+../self-service-asap/services/components/rag_tool_asap
 ```
 
 Его UI/конфигурационная спецификация описана в:
 
 ```text
-../self-service-orig/packages/component_specs/src/self_service/component_specs/components/rag_tool_asap
+../self-service-asap/packages/component_specs/src/self_service/component_specs/components/rag_tool_asap
 ```
 
 `component_specs` задаёт `ComponentConf`: модели, CSV-файл, `triplet_top_k`,
@@ -32,7 +32,7 @@ Evaluation pipeline делает три вещи:
 Canonical dataset берётся из fixture компонента:
 
 ```text
-../self-service-orig/services/components/rag_tool_asap/tests/files/asap.csv
+../self-service-asap/services/components/rag_tool_asap/tests/files/asap.csv
 ```
 
 Ожидаемый audit:
@@ -56,8 +56,9 @@ cp config.example.toml config.toml
 cp .env.example .env
 ```
 
-`config.toml` задаёт путь к датасету, MCP URL, concurrency для вызовов компонента и настройки
-RAGAS. По умолчанию eval ждёт компонент на:
+`config.toml` задаёт MCP URL, concurrency для вызовов компонента и настройки RAGAS.
+Путь к датасету можно указать в `config.toml` как `dataset_path`, передать через
+`--dataset-path` или через переменную `DATASET_PATH`. По умолчанию eval ждёт компонент на:
 
 ```text
 http://localhost:8100/mcp/
@@ -83,23 +84,86 @@ JUDGE_EMBED_MODEL_NAME
 Перед evaluation нужно поднять реальные зависимости компонента:
 
 - Docker;
-- OpenSearch и MinIO из `self-service-orig`;
+- OpenSearch и MinIO из `self-service-asap`;
 - LLM endpoint для online-ответов;
 - preprocessing LLM endpoint для генерации synthetic QA;
 - embedding endpoint.
 
-Заполните секреты в `../self-service-orig/secrets/*.env`. Скрипт создаст отсутствующие файлы
+Заполните секреты в `../self-service-asap/secrets/*.env`. Скрипт создаст отсутствующие файлы
 из `.example`, но реальные адреса и ключи для LLM/embedding нужно прописать вручную.
 
-Для локального запуска моделей можно использовать команды из README компонента, например:
+Для локального запуска моделей можно использовать отдельный launcher:
 
 ```bash
-CUDA_VISIBLE_DEVICES=2 vllm serve Qwen/Qwen2.5-32B-Instruct --port 7114 --max-num-batched-tokens 8192 --max-model-len 8192
-CUDA_VISIBLE_DEVICES=3 vllm serve Qwen/Qwen2.5-3B-Instruct --port 7113 --max-num-batched-tokens 8192
-CUDA_VISIBLE_DEVICES=2 vllm serve jinaai/jina-embeddings-v3 --port 3300 --trust-remote-code --gpu-memory-utilization 0.05
+./scripts/launch-test-models.sh
 ```
 
-После этого из `self-service-asap-eval`:
+Launcher по умолчанию запускает vLLM как `uv run --no-sync vllm`, поэтому `vllm` должен быть
+доступен в `.venv` этого проекта. Если он ещё не установлен:
+
+```bash
+uv pip install vllm
+```
+
+Если нужно использовать системный или другой executable, задайте `VLLM_BIN`:
+
+```bash
+VLLM_BIN=/path/to/vllm ./scripts/launch-test-models.sh
+```
+
+Перед запуском серверов launcher проверяет доступность vLLM и завершится сразу, если executable
+не найден.
+
+По умолчанию launcher также задаёт `VLLM_USE_FLASHINFER_SAMPLER=0`, чтобы vLLM не падал на
+FlashInfer JIT-компиляции в окружениях без CUDA header `curand.h`. Если CUDA toolkit установлен
+полностью и нужен FlashInfer sampler, можно вернуть его:
+
+```bash
+VLLM_USE_FLASHINFER_SAMPLER=1 ./scripts/launch-test-models.sh
+```
+
+По умолчанию он запускает:
+
+- large LM: `Qwen/Qwen2.5-32B-Instruct` на CUDA device `0`, port `7114`;
+- small LM: `Qwen/Qwen2.5-7B-Instruct` на CUDA device `1`, port `7113`;
+- embeddings: `jinaai/jina-embeddings-v3` на CUDA device `1`, port `3300`.
+
+Логи пишутся в `logs/vllm/`. Скрипт ждёт готовности каждого OpenAI-compatible endpoint через
+`/v1/models` и печатает `All model servers are ready.` только после успешной проверки всех трёх
+серверов. После этого launcher записывает PID-файл, печатает команду остановки и выходит, а
+модели продолжают работать в фоне. Остановить их можно напечатанной командой или явно:
+
+```bash
+./scripts/launch-test-models.sh --stop
+```
+
+Если нужен старый attached-режим, в котором `Ctrl-C` останавливает все модели:
+
+```bash
+./scripts/launch-test-models.sh --foreground
+```
+
+Если процесс падает при старте или endpoint не поднимается за timeout, скрипт выводит последние
+строки соответствующего log-файла и завершает работу.
+
+Основные overrides:
+
+```bash
+LARGE_LM_CUDA_VISIBLE_DEVICES=2 \
+SMALL_LM_CUDA_VISIBLE_DEVICES=3 \
+EMB_CUDA_VISIBLE_DEVICES=2 \
+./scripts/launch-test-models.sh
+```
+
+Также можно переопределить `LARGE_LM_MODEL`, `LARGE_LM_PORT`, `SMALL_LM_MODEL`,
+`SMALL_LM_PORT`, `EMB_EMBEDDINGS_MODEL`, `EMB_PORT`, `TEST_MODEL_READY_TIMEOUT`,
+`TEST_MODEL_LOG_DIR` и `TEST_MODEL_STATE_FILE`. Полный список:
+
+```bash
+./scripts/launch-test-models.sh --help
+```
+
+После готовности моделей из `self-service-asap-eval`:
 
 ```bash
 ./scripts/init-rag-tool-asap.sh
@@ -110,7 +174,8 @@ CUDA_VISIBLE_DEVICES=2 vllm serve jinaai/jina-embeddings-v3 --port 3300 --trust-
 - запускает `opensearch` и `minio-storage`;
 - ждёт готовности MinIO;
 - загружает canonical `asap.csv` в `minio/datasets/rag_tool_asap/doc/asap.csv`;
-- запускает `base_rag_tool_asap` через `self-service-orig/scenarios/compose.common.yaml`;
+- ждёт готовности OpenSearch;
+- запускает `base_rag_tool_asap` через `self-service-asap/scenarios/compose.common.yaml`;
 - ждёт готовности `http://localhost:8100/ping`.
 
 Если инфраструктура уже поднята или датасет уже загружен:
@@ -122,7 +187,7 @@ CUDA_VISIBLE_DEVICES=2 vllm serve jinaai/jina-embeddings-v3 --port 3300 --trust-
 Посмотреть логи компонента:
 
 ```bash
-cd ../self-service-orig/scenarios
+cd ../self-service-asap/scenarios
 docker compose -f compose.common.yaml logs -f base_rag_tool_asap
 ```
 
@@ -131,13 +196,13 @@ docker compose -f compose.common.yaml logs -f base_rag_tool_asap
 Полный baseline по всем вопросам:
 
 ```bash
-./scripts/run-evaluation.sh
+./scripts/run-evaluation.sh --dataset-path data/squad_selected_full_ru.csv
 ```
 
 Это эквивалентно:
 
 ```bash
-uv run asap-eval run --config config.toml --max-samples 0
+uv run asap-eval run --config config.toml --dataset-path data/squad_selected_full_ru.csv --max-samples 0
 ```
 
 `--max-samples 0` и любые значения меньше нуля означают “обработать весь датасет”.
@@ -146,7 +211,19 @@ uv run asap-eval run --config config.toml --max-samples 0
 Smoke-run на 5 вопросах:
 
 ```bash
-./scripts/run-evaluation.sh --max-samples 5
+./scripts/run-evaluation.sh --dataset-path data/squad_selected_full_ru.csv --max-samples 5
+```
+
+Запуск с другим CSV-датасетом:
+
+```bash
+./scripts/run-evaluation.sh --dataset-path data/squad_selected_full_en.csv
+```
+
+То же самое через окружение:
+
+```bash
+DATASET_PATH=data/squad_selected_full_en.csv ./scripts/run-evaluation.sh
 ```
 
 Отдельная проверка MCP input contract для `RAG_ASAP`: валидный structured-запрос,
@@ -155,6 +232,8 @@ Smoke-run на 5 вопросах:
 ```bash
 ./scripts/run-input-contract-test.sh
 ```
+
+Тот же MCP endpoint можно дернуть напрямую через `curl`: скрипт `scripts/curl-mcp-request.sh`.
 
 Посмотреть, как живой компонент отвечает на сохранённые вопросы, какие retrieval-контексты
 и synthetic demonstrations он вернул:
@@ -185,9 +264,9 @@ data/rag_tool_demo_queries.json
 
 ```bash
 uv sync --frozen
-uv run asap-eval audit --config config.toml
-uv run asap-eval collect --config config.toml --max-samples 5
-uv run asap-eval evaluate --config config.toml --run-dir results/<run-id> --max-workers 2
+uv run asap-eval audit --config config.toml --dataset-path data/squad_selected_full_en.csv
+uv run asap-eval collect --config config.toml --dataset-path data/squad_selected_full_en.csv --max-samples 5
+uv run asap-eval evaluate --config config.toml --dataset-path data/squad_selected_full_en.csv --run-dir results/<run-id> --max-workers 2
 uv run asap-eval demo --config config.toml --limit 2
 ```
 
@@ -202,7 +281,7 @@ results/<UTC timestamp>-<short dataset hash>/
 Внутри:
 
 - `run_manifest.json` — sanitized config, dataset audit, MCP preflight, версии, имена метрик,
-  состояние git для `self-service-orig` и имена judge-моделей; ключи маскируются;
+  состояние git для `self-service-asap` и имена judge-моделей; ключи маскируются;
 - `inference_samples.jsonl` — checkpointed inference record для каждой строки с вопросом;
 - `ragas_input.jsonl` — ordered `SingleTurnSample` payloads для RAGAS;
 - `scores.csv` — плоская таблица per-sample score с RAGAS-метриками, `context_hit`,

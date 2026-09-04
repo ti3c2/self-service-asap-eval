@@ -15,9 +15,12 @@ Options:
   -h, --help         Show this help.
 
 Environment overrides:
-  ORIG_ROOT                         Path to self-service-orig.
+  ORIG_ROOT                         Path to self-service-asap.
   DATASET                           Path to canonical ASAP CSV.
   MINIO_WAIT_TIMEOUT_SECONDS        MinIO wait timeout, default: 120.
+  OPENSEARCH_CONTAINER              OpenSearch container name, default: opensearch.
+  OPENSEARCH_PORT                   OpenSearch HTTP port, default: 9200.
+  OPENSEARCH_WAIT_TIMEOUT_SECONDS   OpenSearch wait timeout, default: 300.
   COMPONENT_WAIT_TIMEOUT_SECONDS    Readiness wait timeout, default: 7200.
   STREAM_COMPONENT_LOGS             Stream component logs while waiting, default: 1.
 EOF
@@ -66,6 +69,39 @@ wait_for_minio() {
     if (( elapsed >= timeout_seconds )); then
       log "ERROR: MinIO did not become ready in ${timeout_seconds}s."
       log "Check logs with: cd \"$ORIG_ROOT\" && docker compose logs -f minio-storage"
+      return 1
+    fi
+    sleep 3
+  done
+}
+
+wait_for_opensearch() {
+  local timeout_seconds="$1"
+  local started_at
+  started_at="$(date +%s)"
+
+  log "Waiting for OpenSearch readiness at http://opensearch:$OPENSEARCH_PORT"
+  while true; do
+    if docker exec "$OPENSEARCH_CONTAINER" \
+      curl --fail --silent --output /dev/null "http://localhost:$OPENSEARCH_PORT" >/dev/null 2>&1; then
+      log "OpenSearch is ready."
+      return
+    fi
+
+    local container_status
+    container_status="$(docker inspect --format '{{.State.Status}}' "$OPENSEARCH_CONTAINER" 2>/dev/null || true)"
+    if [[ "$container_status" == "exited" || "$container_status" == "dead" ]]; then
+      log "ERROR: OpenSearch container stopped before readiness: status=$container_status"
+      log "Check logs with: cd \"$ORIG_ROOT\" && docker compose logs -f opensearch"
+      return 1
+    fi
+
+    local now elapsed
+    now="$(date +%s)"
+    elapsed=$((now - started_at))
+    if (( elapsed >= timeout_seconds )); then
+      log "ERROR: OpenSearch did not become ready in ${timeout_seconds}s."
+      log "Check logs with: cd \"$ORIG_ROOT\" && docker compose logs -f opensearch"
       return 1
     fi
     sleep 3
@@ -173,13 +209,13 @@ done
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 EVAL_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-ORIG_ROOT="${ORIG_ROOT:-$EVAL_ROOT/../self-service-orig}"
+ORIG_ROOT="${ORIG_ROOT:-$EVAL_ROOT/../self-service-asap}"
 COMPONENT_HEALTH_URL="${COMPONENT_HEALTH_URL:-http://localhost:8100/ping}"
 COMPONENT_WAIT_TIMEOUT_SECONDS="${COMPONENT_WAIT_TIMEOUT_SECONDS:-7200}"
 COMPONENT_CONTAINER="${COMPONENT_CONTAINER:-scenarios-base_rag_tool_asap-1}"
 
 if [[ ! -d "$ORIG_ROOT" ]]; then
-  log "ERROR: self-service-orig was not found at $ORIG_ROOT"
+  log "ERROR: self-service-asap was not found at $ORIG_ROOT"
   exit 1
 fi
 ORIG_ROOT="$(cd -- "$ORIG_ROOT" && pwd)"
@@ -193,6 +229,9 @@ MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-my_password}"
 MINIO_BUCKET="${MINIO_BUCKET:-datasets}"
 MINIO_OBJECT="${MINIO_OBJECT:-rag_tool_asap/doc/$(basename "$DATASET")}"
 MINIO_WAIT_TIMEOUT_SECONDS="${MINIO_WAIT_TIMEOUT_SECONDS:-120}"
+OPENSEARCH_CONTAINER="${OPENSEARCH_CONTAINER:-opensearch}"
+OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
+OPENSEARCH_WAIT_TIMEOUT_SECONDS="${OPENSEARCH_WAIT_TIMEOUT_SECONDS:-300}"
 if [[ ! -f "$DATASET" ]]; then
   log "ERROR: dataset was not found at $DATASET"
   exit 1
@@ -218,7 +257,7 @@ copy_example_if_missing "$ORIG_ROOT/secrets/description_gen.llm.env"
 copy_example_if_missing "$ORIG_ROOT/secrets/embedder.llm.env"
 
 if (( SKIP_INFRA == 0 )); then
-  log "Starting OpenSearch and MinIO from self-service-orig."
+  log "Starting OpenSearch and MinIO from self-service-asap."
   (
     cd "$ORIG_ROOT"
     docker compose up -d opensearch minio-storage
@@ -242,8 +281,9 @@ else
 fi
 
 if (( SKIP_COMPONENT == 0 )); then
+  wait_for_opensearch "$OPENSEARCH_WAIT_TIMEOUT_SECONDS"
   log "Starting rag_tool_asap MCP component on http://localhost:8100."
-  log "Make sure LLM, preprocessing LLM and embedding endpoints from self-service-orig/secrets/*.env are reachable."
+  log "Make sure LLM, preprocessing LLM and embedding endpoints from self-service-asap/secrets/*.env are reachable."
   (
     cd "$ORIG_ROOT/scenarios"
     docker compose -f compose.common.yaml up --build --force-recreate -d base_rag_tool_asap
